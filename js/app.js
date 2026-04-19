@@ -1,87 +1,88 @@
 /**
- * OncoGuia — app.js integrado com API REST
- * Substitui completamente o mock local por chamadas ao backend Node/PostgreSQL
+ * GuideNurse Oncology — app.js v2.0
+ * Cockpit de Decisão Clínica
  */
 
-// ============================================================================
-// CONFIGURAÇÃO
-// ============================================================================
 const API_BASE = window.ONCOGUIA_API || 'http://localhost:3001/api';
 
 async function api(method, path, body = null) {
-    const opts = {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-    };
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
     if (body) opts.body = JSON.stringify(body);
-    const res = await fetch(`${API_BASE}${path}`, opts);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.erro || `Erro ${res.status}`);
-    return data;
+    try {
+        const res = await fetch(`${API_BASE}${path}`, opts);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.erro || `Erro ${res.status}`);
+        return data;
+    } catch (err) {
+        console.warn('[API]', err.message);
+        throw err;
+    }
 }
 
-// ============================================================================
-// STATE — persiste apenas IDs e dados de sessão; o resto vem do banco
-// ============================================================================
+// ══════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════
 const state = {
-    patient:      { id: null, initials: '', reg: '', protocol: '' },
-    consultaId:   null,
-    consultation: {
-        ecog: null,
-        symptoms: {},
-        riskLevel: 'Baixo Risco',
-        nandaSelected: null,
-        nandaSelectedCodigo: null,
-    },
-    selectedNicNoc: [],
-    tasks: []
+    patient:    { id: null, initials: '', reg: '', ciclo: '', protocol: '' },
+    consultaId: null,
+    ecog:       null,
+    symptoms:   {},   // { key: { label, grade, isRisk } }
+    riskLevel:  'baixo',
+    nandaSelectedCodigo: null,
+    nandaSelectedTitle:  null,
+    selectedNicNoc:      [],
+    tasks:               [],
+    nandaCache:          [],
 };
 
-// ============================================================================
-// NAVEGAÇÃO
-// ============================================================================
+// ══════════════════════════════════════════════════
+// NAVEGAÇÃO — sidebar + tabs topo
+// ══════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-    const navLinks = document.querySelectorAll('.nav-links li');
-    const modules  = document.querySelectorAll('.module');
 
-    navLinks.forEach(link => {
-        link.addEventListener('click', () => {
-            navLinks.forEach(n => n.classList.remove('active'));
-            modules.forEach(m => m.style.display = 'none');
-            link.classList.add('active');
-            const targetId = link.getAttribute('data-target');
-            const targetModule = document.getElementById(targetId);
-            if (targetModule) targetModule.style.display = 'block';
+    function activateModule(targetId) {
+        document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+        document.querySelectorAll('.nav-item, .tab').forEach(el => el.classList.remove('active'));
 
-            if (targetId === 'module-followup') buildFollowupPanel();
-            if (targetId === 'module-tasks')    loadTarefas();
-        });
+        const mod = document.getElementById(targetId);
+        if (mod) mod.classList.add('active');
+        document.querySelectorAll(`[data-target="${targetId}"]`).forEach(el => el.classList.add('active'));
+
+        if (targetId === 'module-nanda'   && state.nandaCache.length === 0) loadNanda();
+        if (targetId === 'module-followup') buildFollowupPanel();
+        if (targetId === 'module-tasks')    loadTarefas();
+    }
+
+    document.querySelectorAll('[data-target]').forEach(el => {
+        el.addEventListener('click', () => activateModule(el.dataset.target));
     });
 
-    // =========================================================================
+    // ══════════════════════════════════════════════
     // ABA 1 — IDENTIFICAÇÃO
-    // =========================================================================
+    // ══════════════════════════════════════════════
     document.getElementById('pac-iniciais').addEventListener('input', e => {
-        state.patient.initials = e.target.value.toUpperCase() || 'Novo';
-        document.getElementById('display-patient-name').textContent = state.patient.initials;
-        document.getElementById('patient-avatar').textContent = state.patient.initials.substring(0, 2);
+        state.patient.initials = e.target.value.toUpperCase();
+        document.getElementById('display-patient-name').textContent = state.patient.initials || 'Novo Paciente';
+        document.getElementById('patient-avatar').textContent = state.patient.initials.substring(0, 2) || 'N/A';
     });
-
     document.getElementById('reg-inst').addEventListener('input', e => {
-        state.patient.reg = e.target.value || '---';
-        document.getElementById('display-reg').textContent = state.patient.reg;
+        state.patient.reg = e.target.value;
+        document.getElementById('display-reg').textContent = e.target.value || '---';
+    });
+    document.getElementById('pac-ciclo').addEventListener('input', e => {
+        document.getElementById('display-ciclo').textContent = e.target.value || '---';
+    });
+    document.getElementById('pac-protocol').addEventListener('input', e => {
+        document.getElementById('display-protocol').textContent = e.target.value || '---';
     });
 
-    // Salva paciente + abre consulta ao sair da Aba 1
-    document.querySelectorAll('.nav-links li').forEach(link => {
-        link.addEventListener('click', async () => {
-            // Só persiste se estiver saindo da aba de identificação com dados preenchidos
-            const reg     = document.getElementById('reg-inst').value.trim();
+    // Persiste paciente + abre consulta ao navegar para próxima aba
+    document.querySelectorAll('[data-target]').forEach(el => {
+        el.addEventListener('click', async () => {
+            const reg      = document.getElementById('reg-inst').value.trim();
             const iniciais = document.getElementById('pac-iniciais').value.trim();
             if (!reg || !iniciais || state.consultaId) return;
-
             try {
-                // 1. Cria/atualiza paciente
                 const paciente = await api('POST', '/pacientes', {
                     registro_instituicao: reg,
                     iniciais_nome:        iniciais,
@@ -90,434 +91,392 @@ document.addEventListener('DOMContentLoaded', () => {
                     ciclo_atual:          parseInt(document.getElementById('pac-ciclo').value) || null,
                 });
                 state.patient.id = paciente.id_paciente;
-
-                // 2. Abre consulta (rascunho)
-                const consulta = await api('POST', '/consultas', {
-                    id_paciente:   state.patient.id,
-                    tipo_consulta: 'retorno',
-                });
+                const consulta = await api('POST', '/consultas', { id_paciente: state.patient.id, tipo_consulta: 'retorno' });
                 state.consultaId = consulta.id_consulta;
-                console.log('[OncoGuia] Consulta aberta:', state.consultaId);
-            } catch (err) {
-                console.error('[OncoGuia] Erro ao iniciar consulta:', err.message);
-            }
+            } catch (err) { /* offline — continua sem persistir */ }
         });
     });
 
-    // =========================================================================
-    // ABA 2 — TRIAGEM (Risk Engine)
-    // =========================================================================
-    const riskIndicator = document.getElementById('global-risk');
-    const riskText      = riskIndicator.querySelector('.risk-text');
-    const pulseDot      = riskIndicator.querySelector('.pulse-dot');
-
-    function evaluateRisk() {
-        let isHighRisk   = false;
-        let isMediumRisk = false;
-
-        if (state.consultation.ecog === '3' || state.consultation.ecog === '4') isHighRisk = true;
-
-        Object.values(state.consultation.symptoms).forEach(sym => {
-            if (sym.grade >= 3 || sym.isFeverHigh) isHighRisk = true;
-            if (sym.grade === 2) isMediumRisk = true;
-        });
-
-        if (isHighRisk) {
-            state.consultation.riskLevel = 'alto';
-            riskIndicator.className = 'risk-indicator high-risk';
-            riskText.textContent = 'Alto Risco';
-            pulseDot.className = 'pulse-dot red';
-        } else if (isMediumRisk) {
-            state.consultation.riskLevel = 'moderado';
-            riskIndicator.className = 'risk-indicator';
-            Object.assign(riskIndicator.style, { background: '#fef3c7', color: '#b45309', borderColor: '#fcd34d' });
-            riskText.textContent = 'Risco Moderado';
-            pulseDot.className = 'pulse-dot';
-            pulseDot.style.background = '#f59e0b';
-        } else {
-            state.consultation.riskLevel = 'baixo';
-            riskIndicator.className = 'risk-indicator';
-            Object.assign(riskIndicator.style, { background: '', color: '', borderColor: '' });
-            riskText.textContent = 'Baixo Risco';
-            pulseDot.className = 'pulse-dot green';
-            pulseDot.style.background = '';
-        }
-    }
+    // ══════════════════════════════════════════════
+    // ABA 2 — TRIAGEM + RISK ENGINE
+    // ══════════════════════════════════════════════
 
     // ECOG
     document.querySelectorAll('input[name="ecog"]').forEach(radio => {
         radio.addEventListener('change', e => {
-            state.consultation.ecog = e.target.value;
-            document.querySelectorAll('.radio-card').forEach(c => c.classList.remove('active-risk'));
-            if (e.target.value >= 3) e.target.closest('.radio-card').classList.add('active-risk');
+            state.ecog = e.target.value;
+            document.querySelectorAll('.ecog-btn').forEach(b => b.classList.remove('selected'));
+            e.target.closest('.ecog-btn').classList.add('selected');
             evaluateRisk();
             autoSaveSintomas();
         });
     });
 
-    // CTCAE
-    document.querySelectorAll('.symptom-item').forEach(item => {
-        const symName = item.querySelector('.symptom-name').textContent;
-        const symKey  = symName.toLowerCase()
-            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-        const btns = item.querySelectorAll('.grade-btn');
-        state.consultation.symptoms[symKey] = { grade: 0, isFeverHigh: false, label: symName };
+    // CTCAE sintomas
+    document.querySelectorAll('.symptom-row').forEach(row => {
+        const key   = row.dataset.sym;
+        const label = row.querySelector('.sym-name').textContent;
+        state.symptoms[key] = { label, grade: 0, isRisk: false };
 
-        btns.forEach(btn => {
+        row.querySelectorAll('.sg').forEach(btn => {
             btn.addEventListener('click', () => {
-                btns.forEach(b => b.classList.remove('active'));
+                row.querySelectorAll('.sg').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                const gradeVal = parseInt(btn.dataset.grade);
-                if (symName.includes('Febre') && gradeVal === 3) {
-                    state.consultation.symptoms[symKey].isFeverHigh = true;
-                    state.consultation.symptoms[symKey].grade = 3;
-                } else {
-                    state.consultation.symptoms[symKey].grade = gradeVal;
-                    state.consultation.symptoms[symKey].isFeverHigh = false;
-                }
+                const g = parseInt(btn.dataset.g);
+                state.symptoms[key].grade  = g;
+                state.symptoms[key].isRisk = btn.classList.contains('risk') && g > 0;
                 evaluateRisk();
+                updateSymptomRowStyle(row, key);
                 autoSaveSintomas();
             });
         });
     });
 
-    // Debounce save de sintomas
-    let sintomasSaveTimer = null;
-    async function autoSaveSintomas() {
-        if (!state.consultaId) return;
-        clearTimeout(sintomasSaveTimer);
-        sintomasSaveTimer = setTimeout(async () => {
-            const sintomas = Object.entries(state.consultation.symptoms)
-                .filter(([, v]) => v.grade > 0 || v.isFeverHigh)
-                .map(([k, v]) => ({
-                    tipo_sintoma: k,
-                    grau_ctcae:   v.grade || 0,
-                    alerta_risco: v.grade >= 3 || v.isFeverHigh,
-                }));
-            try {
-                await api('PUT', `/consultas/${state.consultaId}/sintomas`, {
-                    sintomas,
-                    classificacao_risco_automatica: state.consultation.riskLevel,
-                });
-            } catch (err) {
-                console.warn('[OncoGuia] Erro ao salvar sintomas:', err.message);
-            }
-        }, 1200);
+    function updateSymptomRowStyle(row, key) {
+        row.classList.remove('has-risk', 'has-moderate');
+        const s = state.symptoms[key];
+        if (s.grade >= 3 || s.isRisk) row.classList.add('has-risk');
+        else if (s.grade === 2)        row.classList.add('has-moderate');
     }
 
-    // =========================================================================
-    // ABA 3 — PLANO DE CUIDADO (NANDA/NIC/NOC via API)
-    // =========================================================================
-    let nandaCache = [];
+    // ══════════════════════════════════════════════
+    // RISK ENGINE
+    // ══════════════════════════════════════════════
+    function evaluateRisk() {
+        let highCount = 0, modCount = 0;
+        const criteria = [];
 
-    async function loadNanda(filter = '') {
-        const dxList = document.getElementById('dx-list');
-        dxList.innerHTML = '<div class="empty-state" style="height:60px">Carregando...</div>';
-        try {
-            if (nandaCache.length === 0) {
-                nandaCache = await api('GET', '/referencia/nanda');
-            }
-            renderNandaList(filter);
-        } catch (err) {
-            dxList.innerHTML = `<div class="empty-state" style="color:var(--danger)">Erro ao carregar: ${err.message}</div>`;
+        if (state.ecog === '3' || state.ecog === '4') {
+            highCount++;
+            criteria.push({ text: `ECOG ${state.ecog}`, level: 'red' });
         }
+
+        Object.entries(state.symptoms).forEach(([, s]) => {
+            if (s.grade >= 3 || s.isRisk) {
+                highCount++;
+                criteria.push({ text: `${s.label}: Grau ${s.grade || '3+'}`, level: 'red' });
+            } else if (s.grade === 2) {
+                modCount++;
+                criteria.push({ text: `${s.label}: Grau 2`, level: 'amber' });
+            }
+        });
+
+        let level = 'baixo';
+        if (highCount > 0)       level = 'alto';
+        else if (modCount > 0)   level = 'moderado';
+
+        state.riskLevel = level;
+        updateRiskUI(level, criteria);
+    }
+
+    function updateRiskUI(level, criteria) {
+        const card      = document.getElementById('risk-level-card');
+        const text      = document.getElementById('risk-level-text');
+        const sub       = document.getElementById('risk-sublabel');
+        const icon      = document.getElementById('risk-icon');
+        const fill      = document.getElementById('risk-bar-fill');
+        const thumb     = document.getElementById('risk-bar-thumb');
+        const badge     = document.getElementById('risk-badge-inline');
+        const riskDotSb = document.querySelector('#sidebar-risk .risk-dot');
+        const labelSb   = document.getElementById('risk-label-sidebar');
+        const listEl    = document.getElementById('criteria-list');
+
+        const cfg = {
+            baixo:    { cls: 'green', label: 'Baixo Risco',    sub: 'Sem critérios de alerta', pct: '5%',  iconPath: '<path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>' },
+            moderado: { cls: 'amber', label: 'Risco Moderado', sub: 'Monitorar de perto',       pct: '50%', iconPath: '<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>' },
+            alto:     { cls: 'red',   label: 'Alto Risco',     sub: 'Atenção imediata necessária', pct: '92%', iconPath: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>' },
+        }[level];
+
+        card.className  = `risk-level-card ${cfg.cls}`;
+        text.textContent = cfg.label;
+        sub.textContent  = cfg.sub;
+        icon.className   = `risk-icon ${cfg.cls}`;
+        icon.innerHTML   = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${cfg.iconPath}</svg>`;
+        fill.style.width = cfg.pct;
+        thumb.style.left = cfg.pct;
+
+        // Badge topo
+        if (badge) {
+            badge.className = `risk-badge-inline ${cfg.cls === 'green' ? '' : cfg.cls}`;
+            badge.innerHTML = `<span class="risk-dot-sm ${cfg.cls}"></span>${cfg.label}`;
+        }
+
+        // Sidebar
+        if (riskDotSb) riskDotSb.className = `risk-dot ${cfg.cls}`;
+        if (labelSb)   labelSb.textContent  = cfg.label;
+
+        // Critérios
+        if (criteria.length === 0) {
+            listEl.innerHTML = '<div class="criteria-empty">Nenhum critério de risco identificado.</div>';
+        } else {
+            listEl.innerHTML = criteria.map(c =>
+                `<div class="criterion-item ${c.level}">${c.text}</div>`
+            ).join('');
+        }
+    }
+
+    let sintomasTimer = null;
+    async function autoSaveSintomas() {
+        if (!state.consultaId) return;
+        clearTimeout(sintomasTimer);
+        sintomasTimer = setTimeout(async () => {
+            const sintomas = Object.entries(state.symptoms)
+                .filter(([, v]) => v.grade > 0 || v.isRisk)
+                .map(([k, v]) => ({ tipo_sintoma: k, grau_ctcae: v.grade, alerta_risco: v.isRisk }));
+            try {
+                await api('PUT', `/consultas/${state.consultaId}/sintomas`, {
+                    sintomas, classificacao_risco_automatica: state.riskLevel
+                });
+            } catch {}
+        }, 1500);
+    }
+
+    // ══════════════════════════════════════════════
+    // ABA 3 — NANDA / NIC / NOC
+    // ══════════════════════════════════════════════
+    async function loadNanda(filter = '') {
+        const list = document.getElementById('dx-list');
+        if (state.nandaCache.length === 0) {
+            list.innerHTML = '<div class="loading-state">Carregando base NANDA...</div>';
+            try {
+                state.nandaCache = await api('GET', '/referencia/nanda');
+            } catch {
+                list.innerHTML = '<div class="loading-state">Erro ao carregar. Verifique a conexão.</div>';
+                return;
+            }
+        }
+        renderNandaList(filter);
     }
 
     function renderNandaList(filter = '') {
-        const dxList = document.getElementById('dx-list');
-        dxList.innerHTML = '';
-        const filtered = nandaCache.filter(dx =>
+        const list     = document.getElementById('dx-list');
+        const filtered = state.nandaCache.filter(dx =>
             dx.titulo_diagnostico.toLowerCase().includes(filter.toLowerCase())
         );
-        if (filtered.length === 0) {
-            dxList.innerHTML = '<div class="empty-state">Nenhum diagnóstico encontrado.</div>';
+        if (!filtered.length) {
+            list.innerHTML = '<div class="loading-state">Nenhum diagnóstico encontrado.</div>';
             return;
         }
-        filtered.forEach(dx => {
-            const el = document.createElement('div');
-            el.className = 'dx-card glass-panel';
-            el.dataset.codigo = dx.codigo_nanda;
-            el.innerHTML = `<div class="dx-title">[${dx.codigo_nanda}] ${dx.titulo_diagnostico}</div>
-                            <div class="dx-domain">${dx.dominio || ''}</div>`;
-            if (state.consultation.nandaSelectedCodigo === dx.codigo_nanda) el.classList.add('selected');
-            el.addEventListener('click', () => {
-                document.querySelectorAll('.dx-card').forEach(c => c.classList.remove('selected'));
-                el.classList.add('selected');
-                state.consultation.nandaSelected      = dx.titulo_diagnostico;
-                state.consultation.nandaSelectedCodigo = dx.codigo_nanda;
-                loadNicNocSugestoes(dx.codigo_nanda);
+        list.innerHTML = filtered.map(dx => `
+            <div class="dx-card${state.nandaSelectedCodigo === dx.codigo_nanda ? ' selected' : ''}"
+                 data-codigo="${dx.codigo_nanda}">
+                <div class="dx-title">${dx.titulo_diagnostico}</div>
+                <div class="dx-code">[${dx.codigo_nanda}] · ${dx.dominio || ''}</div>
+            </div>
+        `).join('');
+
+        list.querySelectorAll('.dx-card').forEach(card => {
+            card.addEventListener('click', () => {
+                list.querySelectorAll('.dx-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                state.nandaSelectedCodigo = card.dataset.codigo;
+                state.nandaSelectedTitle  = card.querySelector('.dx-title').textContent;
+                loadNicNoc(card.dataset.codigo);
             });
-            dxList.appendChild(el);
         });
     }
 
-    async function loadNicNocSugestoes(codigoNanda) {
+    async function loadNicNoc(codigo) {
         const panel = document.getElementById('nic-noc-panel');
-        panel.innerHTML = '<div class="empty-state">Carregando sugestões...</div>';
+        panel.innerHTML = '<div class="loading-state" style="padding:24px">Carregando sugestões...</div>';
         try {
-            const { intervencoes_nic, resultados_noc } = await api('GET', `/referencia/nanda/${codigoNanda}/sugestoes`);
+            const { intervencoes_nic, resultados_noc } = await api('GET', `/referencia/nanda/${codigo}/sugestoes`);
 
-            const nicHtml = intervencoes_nic.map(i =>
-                `<div class="tag nic selectable-tag"
-                      data-id="${i.nic_id_lc}" data-tipo="nic"
-                      data-codigo="${i.codigo_nic}" data-texto="${i.nome_intervencao.replace(/"/g, '&quot;')}">
+            const nicHtml = intervencoes_nic.map(i => `
+                <div class="tag-item nic${state.selectedNicNoc.find(x => x.id === i.nic_id_lc) ? ' checked' : ''}"
+                     data-id="${i.nic_id_lc}" data-tipo="nic" data-codigo="${i.codigo_nic}"
+                     data-texto="${i.nome_intervencao.replace(/"/g, '&quot;')}">
                     ${i.nome_intervencao}
-                 </div>`
-            ).join('');
-            const nocHtml = resultados_noc.map(o =>
-                `<div class="tag noc selectable-tag"
-                      data-id="${o.noc_id_lc}" data-tipo="noc"
-                      data-codigo="${o.codigo_noc}" data-texto="${o.nome_resultado.replace(/"/g, '&quot;')}">
-                    ${o.nome_resultado}
-                 </div>`
-            ).join('');
+                    <span class="tag-check">✓</span>
+                </div>`).join('');
+
+            const nocHtml = resultados_noc.map(r => `
+                <div class="tag-item noc${state.selectedNicNoc.find(x => x.id === r.noc_id_lc) ? ' checked' : ''}"
+                     data-id="${r.noc_id_lc}" data-tipo="noc" data-codigo="${r.codigo_noc}"
+                     data-texto="${r.nome_resultado.replace(/"/g, '&quot;')}">
+                    ${r.nome_resultado}
+                    <span class="tag-check">✓</span>
+                </div>`).join('');
 
             panel.innerHTML = `
-                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">
-                    Clique nas tags para adicioná-las ao Seguimento (Plano).
-                </p>
-                <h4 style="color:var(--primary); margin-bottom:8px;">Intervenções NIC</h4>
-                <div class="tag-list">${nicHtml || '<span class="empty-state" style="height:auto;padding:8px">Nenhuma intervenção cadastrada.</span>'}</div>
-                <h4 style="color:#166534; margin-bottom:8px;">Resultados NOC</h4>
-                <div class="tag-list">${nocHtml || '<span class="empty-state" style="height:auto;padding:8px">Nenhum resultado cadastrado.</span>'}</div>
+                <div class="nic-noc-section-title nic-title">Intervenções NIC</div>
+                <div class="tag-row">${nicHtml || '<div class="loading-state">Nenhuma intervenção cadastrada.</div>'}</div>
+                <div class="nic-noc-section-title noc-title">Resultados NOC</div>
+                <div class="tag-row">${nocHtml || '<div class="loading-state">Nenhum resultado cadastrado.</div>'}</div>
             `;
 
-            panel.querySelectorAll('.selectable-tag').forEach(tag => {
-                const alreadySelected = state.selectedNicNoc.find(x => x.id === tag.dataset.id);
-                if (alreadySelected) tag.classList.add('checked');
-
+            panel.querySelectorAll('.tag-item').forEach(tag => {
                 tag.addEventListener('click', () => {
                     tag.classList.toggle('checked');
-                    const isChecked = tag.classList.contains('checked');
-                    if (isChecked) {
-                        state.selectedNicNoc.push({
-                            id:     tag.dataset.id,
-                            tipo:   tag.dataset.tipo,
-                            codigo: parseInt(tag.dataset.codigo),
-                            texto:  tag.dataset.texto,
-                        });
+                    const checked = tag.classList.contains('checked');
+                    if (checked) {
+                        state.selectedNicNoc.push({ id: tag.dataset.id, tipo: tag.dataset.tipo, codigo: parseInt(tag.dataset.codigo), texto: tag.dataset.texto });
                     } else {
                         state.selectedNicNoc = state.selectedNicNoc.filter(x => x.id !== tag.dataset.id);
                     }
                     autoSavePlano();
                 });
             });
-        } catch (err) {
-            panel.innerHTML = `<div class="empty-state" style="color:var(--danger)">Erro: ${err.message}</div>`;
+        } catch {
+            panel.innerHTML = '<div class="loading-state" style="color:#DC2626">Erro ao carregar sugestões.</div>';
         }
     }
-
-    let planoSaveTimer = null;
-    async function autoSavePlano() {
-        if (!state.consultaId || !state.consultation.nandaSelectedCodigo) return;
-        clearTimeout(planoSaveTimer);
-        planoSaveTimer = setTimeout(async () => {
-            const intervencoes = state.selectedNicNoc
-                .filter(x => x.tipo === 'nic')
-                .map(x => ({ codigo_nic: x.codigo, nic_id_lc: x.id }));
-            const resultados_esperados = state.selectedNicNoc
-                .filter(x => x.tipo === 'noc')
-                .map(x => ({ codigo_noc: x.codigo, noc_id_lc: x.id }));
-            const diagnosticos = [{
-                codigo_nanda: state.consultation.nandaSelectedCodigo,
-                dx_id_lc:     state.selectedNicNoc[0]?.id?.replace(/NIC|NOC/, 'DX') || null,
-                prioridade:   1,
-                origem:       'selecionado',
-            }];
-            try {
-                await api('PUT', `/consultas/${state.consultaId}/plano`, {
-                    diagnosticos, intervencoes, resultados_esperados
-                });
-            } catch (err) {
-                console.warn('[OncoGuia] Erro ao salvar plano:', err.message);
-            }
-        }, 1500);
-    }
-
-    // Inicializa a Aba 3 quando aberta
-    document.querySelector('[data-target="module-nanda"]').addEventListener('click', () => {
-        if (nandaCache.length === 0) loadNanda();
-    });
 
     document.getElementById('dx-search').addEventListener('input', e => renderNandaList(e.target.value));
 
-    // =========================================================================
+    let planoTimer = null;
+    async function autoSavePlano() {
+        if (!state.consultaId || !state.nandaSelectedCodigo) return;
+        clearTimeout(planoTimer);
+        planoTimer = setTimeout(async () => {
+            try {
+                await api('PUT', `/consultas/${state.consultaId}/plano`, {
+                    diagnosticos: [{ codigo_nanda: state.nandaSelectedCodigo, prioridade: 1, origem: 'selecionado' }],
+                    intervencoes: state.selectedNicNoc.filter(x => x.tipo === 'nic').map(x => ({ codigo_nic: x.codigo, nic_id_lc: x.id })),
+                    resultados_esperados: state.selectedNicNoc.filter(x => x.tipo === 'noc').map(x => ({ codigo_noc: x.codigo, noc_id_lc: x.id })),
+                });
+            } catch {}
+        }, 1500);
+    }
+
+    // ══════════════════════════════════════════════
     // ABA 4 — SEGUIMENTO
-    // =========================================================================
+    // ══════════════════════════════════════════════
     async function buildFollowupPanel() {
         const panel = document.getElementById('followup-actions-panel');
+        let items = state.selectedNicNoc;
 
-        // Se tem consultaId, busca plano do banco. Senão, usa state local.
-        let nicNocItems = state.selectedNicNoc;
-
-        if (state.consultaId && nicNocItems.length === 0) {
+        if (!items.length && state.consultaId) {
             try {
                 const plano = await api('GET', `/consultas/${state.consultaId}/plano`);
-                nicNocItems = [
+                items = [
                     ...plano.intervencoes.map(i => ({ id: i.nic_id_lc, tipo: 'nic', texto: i.nome_intervencao })),
                     ...plano.resultados_esperados.map(r => ({ id: r.noc_id_lc, tipo: 'noc', texto: r.nome_resultado })),
                 ];
-            } catch (err) {
-                console.warn('[OncoGuia] Plano não carregado do banco:', err.message);
-            }
+            } catch {}
         }
 
-        if (nicNocItems.length === 0) {
-            panel.innerHTML = '<span class="empty-state">Nenhum cuidado (NIC/NOC) selecionado para monitoramento.</span>';
+        if (!items.length) {
+            panel.innerHTML = '<div class="empty-state-sm">Complete o Plano SAE para carregar as metas aqui.</div>';
             return;
         }
 
-        let content = `<div style="display:flex; flex-direction:column; gap:8px;">`;
-        nicNocItems.forEach(item => {
-            const labelBadge = item.tipo === 'nic'
-                ? `<span style="color:#0284c7; font-weight:bold; font-size:0.75rem;">[NIC]</span>`
-                : `<span style="color:#166534; font-weight:bold; font-size:0.75rem;">[NOC]</span>`;
-            content += `
-                <div class="checklist-item">
-                    <label>${labelBadge} ${item.texto}</label>
-                    <select data-id="${item.id}" class="efetividade-select">
-                        <option value="">Status Atual...</option>
-                        <option value="resolvido">Atingido / Resolvido</option>
-                        <option value="parcialmente_resolvido">Parcialmente atingido</option>
-                        <option value="nao_resolvido">Não resolvido</option>
-                        <option value="piorou">Piorou</option>
-                    </select>
-                </div>`;
-        });
-        content += `</div>`;
-        panel.innerHTML = content;
+        panel.innerHTML = items.map(item => `
+            <div class="followup-item">
+                <span class="followup-badge ${item.tipo}">${item.tipo.toUpperCase()}</span>
+                <span class="followup-text">${item.texto}</span>
+                <select class="followup-select efetividade-select" data-id="${item.id}">
+                    <option value="">Status...</option>
+                    <option value="resolvido">Resolvido ✓</option>
+                    <option value="parcialmente_resolvido">Parcialmente resolvido</option>
+                    <option value="nao_resolvido">Não resolvido</option>
+                    <option value="piorou">Piorou ↓</option>
+                </select>
+            </div>
+        `).join('');
     }
 
-    // =========================================================================
-    // ABA 5 — AGENDA / TAREFAS
-    // =========================================================================
+    // ══════════════════════════════════════════════
+    // ABA 5 — TAREFAS
+    // ══════════════════════════════════════════════
     async function loadTarefas() {
         const tbody = document.getElementById('tasks-table-body');
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Carregando...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="table-empty">Carregando...</td></tr>';
         try {
             const tarefas = await api('GET', '/tarefas');
             renderTarefas(tarefas);
-        } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="color:var(--danger)">Erro: ${err.message}</td></tr>`;
+        } catch {
+            tbody.innerHTML = '<tr><td colspan="6" class="table-empty">Erro ao carregar tarefas.</td></tr>';
         }
     }
 
     function renderTarefas(tarefas) {
         const tbody = document.getElementById('tasks-table-body');
-        if (tarefas.length === 0) {
-            tbody.innerHTML = '<tr class="empty-row"><td colspan="5" class="empty-state">Sem tarefas na agenda.</td></tr>';
+        if (!tarefas.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="table-empty">Nenhuma tarefa na agenda.</td></tr>';
             return;
         }
         tbody.innerHTML = tarefas.map(t => `
             <tr>
-                <td style="font-weight:600;">${t.iniciais_nome || t.id_paciente}</td>
-                <td>${t.tipo_tarefa.replace(/_/g, ' ')}</td>
-                <td style="color:${t.prioridade === 'alta' ? 'var(--danger)' : 'inherit'};
-                            font-weight:${t.prioridade === 'alta' ? 'bold' : 'normal'}">
-                    ${t.prioridade === 'alta' ? 'Alta' : 'Padrão'}
-                </td>
-                <td><span class="status-badge status-${(t.status || '').toLowerCase()}">${t.status || ''}</span></td>
+                <td><span class="status-pill ${t.status}">${t.status}</span></td>
+                <td style="font-weight:600">${t.iniciais_nome || '---'}</td>
+                <td>${(t.tipo_tarefa || '').replace(/_/g,' ')}</td>
+                <td><span class="priority-badge ${t.prioridade}">${t.prioridade === 'alta' ? 'Alta' : 'Padrão'}</span></td>
                 <td>${t.data_prevista ? new Date(t.data_prevista).toLocaleDateString('pt-BR') : 'Hoje'}</td>
+                <td><button class="btn-task-done" data-id="${t.id_tarefa}">Concluir</button></td>
             </tr>
         `).join('');
+
+        tbody.querySelectorAll('.btn-task-done').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                try {
+                    await api('PATCH', `/tarefas/${btn.dataset.id}`, { status: 'concluida' });
+                    loadTarefas();
+                } catch {}
+            });
+        });
     }
 
-    // =========================================================================
-    // BOTÃO "CONCLUIR E RESUMIR"
-    // =========================================================================
+    // ══════════════════════════════════════════════
+    // CONCLUIR CONSULTA
+    // ══════════════════════════════════════════════
     document.getElementById('btn-concluir').addEventListener('click', async () => {
-        const condutaSel  = document.getElementById('followup-conduta');
-        const modalidade  = document.getElementById('followup-modalidade')?.value || null;
-        const condutaVal  = condutaSel?.selectedIndex > 0 ? condutaSel.value : null;
+        const conduta   = document.getElementById('followup-conduta')?.value || '';
+        const modalidade = document.getElementById('followup-modalidade')?.value || 'telefonico';
 
-        // Monta texto para prontuário
-        const sympsArr = Object.entries(state.consultation.symptoms)
-            .filter(([, v]) => v.grade > 0 || v.isFeverHigh)
-            .map(([, v]) => `${v.label}: ${v.isFeverHigh ? 'Sim (G3+)' : 'Grau ' + v.grade}`);
+        const sympsArr = Object.entries(state.symptoms)
+            .filter(([, v]) => v.grade > 0 || v.isRisk)
+            .map(([, v]) => `${v.label}: ${v.isRisk ? 'Sim (G3+)' : 'Grau ' + v.grade}`);
 
-        const riskLabel = { alto: 'ALTO RISCO', moderado: 'RISCO MODERADO', baixo: 'BAIXO RISCO' }[state.consultation.riskLevel] || state.consultation.riskLevel;
+        const riskLabels = { baixo: 'BAIXO RISCO', moderado: 'RISCO MODERADO', alto: 'ALTO RISCO' };
 
-        const plainText = `[SISTEMA ONCOGUIA - RESUMO]
-ID: ${state.patient.initials} | ${state.patient.reg}
-Risco Estratificado: ${riskLabel}
-ECOG Documentado: ${state.consultation.ecog || 'N/A'}
+        const plainText = `[GUIDENURSE ONCOLOGY — RESUMO DA CONSULTA]
+Paciente: ${state.patient.initials || '---'} | Reg: ${state.patient.reg || '---'}
+Risco Estratificado: ${riskLabels[state.riskLevel]}
+ECOG: ${state.ecog || 'N/A'}
 
-[TRIAGEM CTCAE ATIVOS]
-${sympsArr.length > 0 ? sympsArr.map(s => '> ' + s).join('\n') : 'Sem toxicidade relatada.'}
+[TRIAGEM CTCAE]
+${sympsArr.length ? sympsArr.map(s => '▸ ' + s).join('\n') : 'Sem toxicidade relatada.'}
 
 [PLANO DE CUIDADO SAE]
-Dx Principal: ${state.consultation.nandaSelected || 'Nenhum avaliado'}
-Metas e Intervenções ativas:
-${state.selectedNicNoc.map(n => '+ [' + n.tipo.toUpperCase() + '] ' + n.texto).join('\n')}
+Diagnóstico Principal: ${state.nandaSelectedTitle || 'Não avaliado'}
+${state.selectedNicNoc.map(n => `▸ [${n.tipo.toUpperCase()}] ${n.texto}`).join('\n') || 'Nenhuma intervenção selecionada.'}
 
-[CONDUTA GERADA]
-${condutaVal || 'Apenas registro assistencial.'}`;
+[CONDUTA]
+${conduta || 'Apenas registro assistencial.'}`;
 
-        // Monta preview visual
-        const riskBadgeClass = state.consultation.riskLevel === 'alto' ? 'risk-high' : 'risk-low';
+        const riskCls = state.riskLevel === 'alto' ? 'risk-label-high' : 'risk-label-low';
         const visualHtml = `
-            <strong>Paciente:</strong> ${state.patient.initials} (Reg: ${state.patient.reg})<br>
-            <strong>Status Triagem:</strong> <span class="risk-badge ${riskBadgeClass}">${riskLabel}</span><br><br>
-            <strong>Sintomas Ativos (CTCAE):</strong><br>
-            ${sympsArr.length > 0 ? '<ul><li>' + sympsArr.join('</li><li>') + '</li></ul>' : '<em>Nenhum sintoma clinicamente acionado.</em><br>'}
-            <br>
-            <strong>Plano de Ação (SAE Estruturada):</strong><br>
-            ${state.consultation.nandaSelected ? `Diagnóstico Ativo: <u>${state.consultation.nandaSelected}</u><br>` : 'Sem SAE fixada'}
-            <ul>${state.selectedNicNoc.map(n => `<li><b>${n.tipo.toUpperCase()}:</b> ${n.texto}</li>`).join('')}</ul>`;
+            <strong>Paciente:</strong> ${state.patient.initials} (${state.patient.reg})<br>
+            <strong>Risco:</strong> <span class="${riskCls}">${riskLabels[state.riskLevel]}</span><br><br>
+            <strong>Sintomas:</strong><br>
+            ${sympsArr.length ? sympsArr.map(s => `<span style="display:block;margin-left:8px">▸ ${s}</span>`).join('') : '<em>Nenhum</em>'}<br>
+            <strong>Diagnóstico:</strong> ${state.nandaSelectedTitle || '—'}<br>
+            ${state.selectedNicNoc.map(n => `<span style="display:block;margin-left:8px">▸ [${n.tipo.toUpperCase()}] ${n.texto}</span>`).join('')}
+        `;
 
         document.getElementById('summary-visual-preview').innerHTML = visualHtml;
         document.getElementById('summary-text').value = plainText;
         document.getElementById('summary-modal').style.display = 'flex';
 
-        // Persiste no banco
         if (state.consultaId) {
             try {
-                // Determina tipo e prazo da tarefa
-                let tipo_tarefa = null;
-                let data_prevista_tarefa = null;
-                let prioridade_tarefa = 'padrao';
-                if (condutaVal) {
+                let tipo_tarefa = null, data_prevista_tarefa = null, prioridade_tarefa = 'padrao';
+                if (conduta) {
                     tipo_tarefa = 'contato_telefonico';
-                    if (condutaVal.includes('imediato')) { prioridade_tarefa = 'alta'; }
-                    if (condutaVal.includes('24h')) { prioridade_tarefa = 'alta'; }
+                    if (conduta.includes('24h') || conduta.includes('imediato')) prioridade_tarefa = 'alta';
                     const d = new Date();
-                    if (condutaVal.includes('48h')) d.setDate(d.getDate() + 2);
-                    else d.setDate(d.getDate() + 1);
+                    d.setDate(d.getDate() + (conduta.includes('48h') ? 2 : 1));
                     data_prevista_tarefa = d.toISOString().split('T')[0];
                 }
-
                 await api('POST', `/consultas/${state.consultaId}/concluir`, {
-                    classificacao_risco_validada: state.consultation.riskLevel,
+                    classificacao_risco_validada: state.riskLevel,
                     texto_copiavel_prontuario:    plainText,
-                    plano_cuidado_resumido:       state.consultation.nandaSelected || null,
-                    conduta_seguimento_definida:  condutaVal,
-                    tipo_tarefa,
-                    data_prevista_tarefa,
-                    prioridade_tarefa,
+                    plano_cuidado_resumido:        state.nandaSelectedTitle,
+                    conduta_seguimento_definida:   conduta,
+                    tipo_tarefa, data_prevista_tarefa, prioridade_tarefa
                 });
-
-                // Se foi seguimento, registra também na tabela de seguimentos
-                if (state.consultaId) {
-                    const efetividades = [...document.querySelectorAll('.efetividade-select')]
-                        .filter(s => s.value)
-                        .map(s => ({ id: s.dataset.id, efetividade: s.value }));
-
-                    if (modalidade || condutaVal) {
-                        await api('POST', '/seguimentos', {
-                            id_paciente:        state.patient.id,
-                            id_consulta_origem: state.consultaId,
-                            modalidade:         modalidade || 'telefonico',
-                            conduta_realizada:  condutaVal,
-                            efetividade:        efetividades[0]?.efetividade || null,
-                            texto_copiavel_prontuario: plainText,
-                            necessita_novo_seguimento: !!condutaVal,
-                        });
-                    }
-                }
-            } catch (err) {
-                console.error('[OncoGuia] Erro ao concluir:', err.message);
-            }
+            } catch {}
         }
     });
 
@@ -529,7 +488,12 @@ ${condutaVal || 'Apenas registro assistencial.'}`;
         const ta = document.getElementById('summary-text');
         ta.select();
         document.execCommand('copy');
-        e.target.textContent = 'Copiado para a Área de Transferência!';
-        setTimeout(() => e.target.textContent = 'Copiar para Prontuário', 3000);
+        e.target.textContent = '✓ Copiado!';
+        setTimeout(() => {
+            e.target.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copiar para Prontuário`;
+        }, 2500);
     });
+
+    // Init
+    evaluateRisk();
 });
