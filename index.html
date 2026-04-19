@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oncoguia - Gestão de Cuidado</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+
+        <!-- Sidebar -->
+        <nav class="sidebar glass-panel">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <h1>Oncoguia</h1>
+            </div>
+            <ul class="nav-links">
+                <li class="active" data-target="module-id">Identificação</li>
+                <li data-target="module-triage">Avaliação e Triagem</li>
+                <li data-target="module-nanda">Plano de Cuidado (SAE)</li>
+                <li data-target="module-followup">Seguimento</li>
+                <li data-target="module-tasks">Agenda / Tarefas</li>
+            </ul>
+            <div class="risk-indicator" id="global-risk">
+                <span class="pulse-dot green"></span>
+                <span class="risk-text">Risco Baixo</span>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header glass-panel">
+                <div class="patient-snippet">
+                    <div class="avatar" id="patient-avatar">N/A</div>
+                    <div class="patient-info">
+                        <h2 id="display-patient-name">Novo Paciente</h2>
+                        <span class="registro">Registro: <span id="display-reg">---</span></span>
+                    </div>
+                </div>
+                <button class="btn-primary" id="btn-concluir">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                    </svg>
+                    Concluir e Resumir
+                </button>
+            </header>
+
+            <div class="modules-wrapper">
+
+                <!-- Módulo 1: Identificação -->
+                <section id="module-id" class="module active slide-in">
+                    <div class="card glass-panel">
+                        <h3>Identificação do Paciente</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label for="reg-inst">Nº Registro Institucional</label>
+                                <input type="text" id="reg-inst" placeholder="Ex: 123698-8">
+                            </div>
+                            <div class="input-group">
+                                <label for="pac-iniciais">Iniciais do Paciente</label>
+                                <input type="text" id="pac-iniciais" placeholder="Ex: M. D. G">
+                            </div>
+                            <div class="input-group">
+                                <label for="pac-idade">Idade</label>
+                                <input type="number" id="pac-idade" placeholder="Ex: 55">
+                            </div>
+                            <div class="input-group">
+                                <label for="pac-tel">Telefone (Contato)</label>
+                                <input type="tel" id="pac-tel" placeholder="(11) 99999-9999">
+                            </div>
+                            <div class="input-group">
+                                <label for="pac-protocol">Protocolo Atual</label>
+                                <input type="text" id="pac-protocol" placeholder="Ex: FOLFIRI">
+                            </div>
+                            <div class="input-group">
+                                <label for="pac-ciclo">Ciclo Atual</label>
+                                <input type="number" id="pac-ciclo" placeholder="Ex: 3">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Módulo 2: Triagem -->
+                <section id="module-triage" class="module slide-in" style="display:none;">
+                    <div class="card glass-panel">
+                        <h3>Triagem e Avaliação Clínica</h3>
+                        <p class="subtitle">Análise CTCAE v5.0 e Estado Funcional</p>
+
+                        <div class="triage-section">
+                            <h4>ECOG Performance Status</h4>
+                            <div class="radio-group" id="ecog-group">
+                                <label class="radio-card"><input type="radio" name="ecog" value="0"> 0 - Assintomático</label>
+                                <label class="radio-card"><input type="radio" name="ecog" value="1"> 1 - Sintomático, trabalho leve</label>
+                                <label class="radio-card"><input type="radio" name="ecog" value="2"> 2 - Acamado &lt; 50%</label>
+                                <label class="radio-card risk-trigger"><input type="radio" name="ecog" value="3" data-risk="high"> 3 - Acamado &gt; 50%</label>
+                                <label class="radio-card risk-trigger"><input type="radio" name="ecog" value="4" data-risk="high"> 4 - Totalmente acamado</label>
+                            </div>
+                        </div>
+
+                        <div class="triage-section mt-4">
+                            <h4>Triagem de Sintomas (CTCAE Graus)</h4>
+                            <div class="symptoms-grid">
+                                <div class="symptom-item">
+                                    <span class="symptom-name">Náusea</span>
+                                    <div class="grade-selector">
+                                        <button class="grade-btn active" data-grade="0">0</button>
+                                        <button class="grade-btn" data-grade="1">1</button>
+                                        <button class="grade-btn" data-grade="2">2</button>
+                                        <button class="grade-btn risk-btn" data-grade="3">3</button>
+                                        <button class="grade-btn risk-btn" data-grade="4">4</button>
+                                    </div>
+                                </div>
+                                <div class="symptom-item">
+                                    <span class="symptom-name">Vômito</span>
+                                    <div class="grade-selector">
+                                        <button class="grade-btn active" data-grade="0">0</button>
+                                        <button class="grade-btn" data-grade="1">1</button>
+                                        <button class="grade-btn" data-grade="2">2</button>
+                                        <button class="grade-btn risk-btn" data-grade="3">3</button>
+                                        <button class="grade-btn risk-btn" data-grade="4">4</button>
+                                    </div>
+                                </div>
+                                <div class="symptom-item">
+                                    <span class="symptom-name">Fadiga</span>
+                                    <div class="grade-selector">
+                                        <button class="grade-btn active" data-grade="0">0</button>
+                                        <button class="grade-btn" data-grade="1">1</button>
+                                        <button class="grade-btn" data-grade="2">2</button>
+                                        <button class="grade-btn risk-btn" data-grade="3">3</button>
+                                        <button class="grade-btn risk-btn" data-grade="4">4</button>
+                                    </div>
+                                </div>
+                                <div class="symptom-item">
+                                    <span class="symptom-name">Dor</span>
+                                    <div class="grade-selector">
+                                        <button class="grade-btn active" data-grade="0">0</button>
+                                        <button class="grade-btn" data-grade="1">1</button>
+                                        <button class="grade-btn" data-grade="2">2</button>
+                                        <button class="grade-btn risk-btn" data-grade="3">3</button>
+                                        <button class="grade-btn risk-btn" data-grade="4">4</button>
+                                    </div>
+                                </div>
+                                <div class="symptom-item">
+                                    <span class="symptom-name">Diarreia</span>
+                                    <div class="grade-selector">
+                                        <button class="grade-btn active" data-grade="0">0</button>
+                                        <button class="grade-btn" data-grade="1">1</button>
+                                        <button class="grade-btn" data-grade="2">2</button>
+                                        <button class="grade-btn risk-btn" data-grade="3">3</button>
+                                        <button class="grade-btn risk-btn" data-grade="4">4</button>
+                                    </div>
+                                </div>
+                                <div class="symptom-item">
+                                    <span class="symptom-name">Dispneia</span>
+                                    <div class="grade-selector">
+                                        <button class="grade-btn active" data-grade="0">0</button>
+                                        <button class="grade-btn" data-grade="1">1</button>
+                                        <button class="grade-btn" data-grade="2">2</button>
+                                        <button class="grade-btn risk-btn" data-grade="3">3</button>
+                                        <button class="grade-btn risk-btn" data-grade="4">4</button>
+                                    </div>
+                                </div>
+                                <div class="symptom-item">
+                                    <span class="symptom-name">Febre (≥ 38º)</span>
+                                    <div class="grade-selector">
+                                        <button class="grade-btn active" data-grade="0">Não</button>
+                                        <button class="grade-btn risk-btn" data-grade="3">Sim</button>
+                                    </div>
+                                </div>
+                                <div class="symptom-item">
+                                    <span class="symptom-name">Mucosite</span>
+                                    <div class="grade-selector">
+                                        <button class="grade-btn active" data-grade="0">0</button>
+                                        <button class="grade-btn" data-grade="1">1</button>
+                                        <button class="grade-btn" data-grade="2">2</button>
+                                        <button class="grade-btn risk-btn" data-grade="3">3</button>
+                                        <button class="grade-btn risk-btn" data-grade="4">4</button>
+                                    </div>
+                                </div>
+                                <div class="symptom-item">
+                                    <span class="symptom-name">Neuropatia</span>
+                                    <div class="grade-selector">
+                                        <button class="grade-btn active" data-grade="0">0</button>
+                                        <button class="grade-btn" data-grade="1">1</button>
+                                        <button class="grade-btn" data-grade="2">2</button>
+                                        <button class="grade-btn risk-btn" data-grade="3">3</button>
+                                        <button class="grade-btn risk-btn" data-grade="4">4</button>
+                                    </div>
+                                </div>
+                                <div class="symptom-item">
+                                    <span class="symptom-name">Ansiedade</span>
+                                    <div class="grade-selector">
+                                        <button class="grade-btn active" data-grade="0">0</button>
+                                        <button class="grade-btn" data-grade="1">1</button>
+                                        <button class="grade-btn" data-grade="2">2</button>
+                                        <button class="grade-btn risk-btn" data-grade="3">3</button>
+                                        <button class="grade-btn risk-btn" data-grade="4">4</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Módulo 3: NANDA NIC NOC -->
+                <section id="module-nanda" class="module slide-in" style="display:none;">
+                    <div class="card glass-panel">
+                        <h3>Plano de Cuidados (SAE)</h3>
+                        <p class="subtitle">Integração baseada em Diagnósticos Mapeados</p>
+                        <div class="search-box">
+                            <input type="text" id="dx-search" placeholder="Buscar diagnóstico (ex: Náusea, Fadiga, Risco de Infecção)...">
+                        </div>
+                        <div class="nanda-container">
+                            <div class="dx-list" id="dx-list">
+                                <div class="empty-state">Carregando diagnósticos...</div>
+                            </div>
+                            <div class="nic-noc-panel glass-panel" id="nic-noc-panel">
+                                <div class="empty-state">Selecione um diagnóstico à esquerda para ver Intervenções e Resultados esperados.</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Módulo 4: Seguimento -->
+                <section id="module-followup" class="module slide-in" style="display:none;">
+                    <div class="card glass-panel">
+                        <h3>Plano de Seguimento e Avaliação</h3>
+                        <p class="subtitle">Monitoramento de Atividades e Resumo do Ciclo</p>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label>Conduta de Seguimento</label>
+                                <select id="followup-conduta" class="custom-select">
+                                    <option value="">Selecione...</option>
+                                    <option value="Seguimento padrão (contato em 48h)">Seguimento padrão (contato em 48h)</option>
+                                    <option value="Seguimento reforçado (contato em 24h)">Seguimento reforçado (contato em 24h)</option>
+                                    <option value="Encaminhamento imediato">Encaminhamento imediato</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Modalidade</label>
+                                <select id="followup-modalidade" class="custom-select">
+                                    <option value="telefonico">Telefônico</option>
+                                    <option value="presencial">Presencial</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <h4 style="color:var(--primary); margin-bottom:12px;">Metas Acompanhadas no Seguimento</h4>
+                            <div id="followup-actions-panel" class="checklist-panel">
+                                <span class="empty-state">Realize o plano de cuidados na aba SAE para carregar o checklist aqui.</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Módulo 5: Tarefas -->
+                <section id="module-tasks" class="module slide-in" style="display:none;">
+                    <div class="card glass-panel">
+                        <h3>Agenda e Tarefas Assistenciais</h3>
+                        <p class="subtitle">Visão Operacional Clínica</p>
+                        <div class="tasks-table-container">
+                            <table class="tasks-table">
+                                <thead>
+                                    <tr>
+                                        <th>Paciente</th>
+                                        <th>Tipo de Tarefa</th>
+                                        <th>Prioridade</th>
+                                        <th>Status</th>
+                                        <th>Prazo Previsto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tasks-table-body">
+                                    <tr class="empty-row"><td colspan="5" class="empty-state">Sem tarefas mapeadas.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Modal Resumo -->
+                <div id="summary-modal" class="modal-overlay" style="display:none;">
+                    <div class="modal glass-panel modal-lg">
+                        <div class="modal-split">
+                            <div class="modal-left">
+                                <h3 style="color:var(--primary);">Apresentação Visual</h3>
+                                <p class="subtitle">Como o relatório final estruturado se parece.</p>
+                                <div id="summary-visual-preview" class="visual-preview"></div>
+                            </div>
+                            <div class="modal-right">
+                                <h3>Texto para Prontuário</h3>
+                                <p class="subtitle">Texto pronto para Ctrl+V</p>
+                                <textarea id="summary-text" readonly rows="16"></textarea>
+                                <div class="modal-actions" style="margin-top:16px;">
+                                    <button class="btn-secondary" id="close-modal">Cancelar</button>
+                                    <button class="btn-primary" id="copy-clipboard">Copiar para Prontuário</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- URL da API — troque pela URL do Railway após o deploy -->
+    <script>
+        window.ONCOGUIA_API = 'https://oncoguia-api.up.railway.app/api';
+    </script>
+    <script src="js/app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./service-worker.js');
+        }
+    </script>
+</body>
+</html>
