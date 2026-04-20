@@ -12,14 +12,57 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<div class="app-shell">
 
-    <!-- ═══════════════════════════════════════
-         SIDEBAR
-    ═══════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════
+     TELA INICIAL — BUSCA POR PRONTUÁRIO
+═══════════════════════════════════════════ -->
+<div id="screen-search" class="search-screen">
+    <div class="search-card">
+        <div class="search-logo">
+            <svg width="52" height="60" viewBox="0 0 104 120" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="sg0" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#2A9DF4"/>
+                        <stop offset="100%" stop-color="#175C9D"/>
+                    </linearGradient>
+                    <clipPath id="sc0"><path d="M52,4 L100,18 C100,18 100,88 52,108 C4,88 4,18 4,18 Z"/></clipPath>
+                </defs>
+                <path d="M52,4 L52,108 C52,108 4,88 4,60 L4,18 Z" fill="#2CA76E" clip-path="url(#sc0)"/>
+                <path d="M52,4 L100,18 C100,18 100,88 52,108 Z" fill="url(#sg0)" clip-path="url(#sc0)"/>
+                <path d="M52,4 L100,18 C100,18 100,88 52,108 C4,88 4,18 4,18 Z" fill="none" stroke="#2CA76E" stroke-width="4"/>
+                <rect x="21" y="34" width="11" height="32" rx="2" fill="white"/>
+                <rect x="11" y="44" width="31" height="11" rx="2" fill="white"/>
+                <polyline points="58,62 62,62 65,44 68,82 71,56 74,62 80,62" fill="none" stroke="#00C853" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div>
+                <div class="search-brand-name">GuideNurse</div>
+                <div class="search-brand-sub">ONCOLOGY</div>
+            </div>
+        </div>
+        <h2 class="search-title">Buscar Paciente</h2>
+        <p class="search-desc">Informe o número de registro institucional para iniciar o atendimento</p>
+        <div class="search-input-row">
+            <input type="text" id="search-reg" placeholder="Ex: 123698-8" class="search-input" autocomplete="off">
+            <button class="btn-search" id="btn-search">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                Buscar
+            </button>
+        </div>
+        <div id="search-result" class="search-result" style="display:none;"></div>
+        <button class="btn-new-patient" id="btn-new-patient">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Novo Paciente
+        </button>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     APP PRINCIPAL
+═══════════════════════════════════════════ -->
+<div id="app-main" class="app-shell" style="display:none;">
+
+    <!-- SIDEBAR -->
     <aside class="sidebar">
-
-        <!-- Logo compacta -->
         <div class="sidebar-logo">
             <svg width="36" height="42" viewBox="0 0 104 120" xmlns="http://www.w3.org/2000/svg">
                 <defs>
@@ -27,9 +70,7 @@
                         <stop offset="0%" stop-color="#2A9DF4"/>
                         <stop offset="100%" stop-color="#175C9D"/>
                     </linearGradient>
-                    <clipPath id="sc">
-                        <path d="M52,4 L100,18 C100,18 100,88 52,108 C4,88 4,18 4,18 Z"/>
-                    </clipPath>
+                    <clipPath id="sc"><path d="M52,4 L100,18 C100,18 100,88 52,108 C4,88 4,18 4,18 Z"/></clipPath>
                 </defs>
                 <path d="M52,4 L52,108 C52,108 4,88 4,60 L4,18 Z" fill="#2CA76E" clip-path="url(#sc)"/>
                 <path d="M52,4 L100,18 C100,18 100,88 52,108 Z" fill="url(#sg)" clip-path="url(#sc)"/>
@@ -43,8 +84,6 @@
                 <span class="brand-sub">ONCOLOGY</span>
             </div>
         </div>
-
-        <!-- Nav -->
         <nav class="sidebar-nav">
             <a class="nav-item active" data-target="module-id">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
@@ -56,7 +95,7 @@
             </a>
             <a class="nav-item" data-target="module-nanda">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-                <span>Plano NANDA-NIC-NOC</span>
+                <span>Plano SAE</span>
             </a>
             <a class="nav-item" data-target="module-followup">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0"/><polyline points="12 8 12 12 14 14"/></svg>
@@ -66,54 +105,57 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 <span>Tarefas</span>
             </a>
+            <a class="nav-item" data-target="module-indicators">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                <span>Indicadores</span>
+            </a>
+            <a class="nav-item" data-target="module-evolution">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span>Evolução</span>
+            </a>
         </nav>
-
         <div class="sidebar-footer">
             <div class="sidebar-risk" id="sidebar-risk">
                 <span class="risk-dot green"></span>
                 <span class="risk-label" id="risk-label-sidebar">Risco Baixo</span>
             </div>
+            <button class="btn-back-search" id="btn-back-search">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                Trocar paciente
+            </button>
         </div>
     </aside>
 
-    <!-- ═══════════════════════════════════════
-         CONTEÚDO PRINCIPAL
-    ═══════════════════════════════════════ -->
+    <!-- MAIN AREA -->
     <div class="main-area">
 
-        <!-- TOP HEADER — cockpit style -->
+        <!-- TOP BAR -->
         <header class="top-bar">
-            <!-- Paciente -->
             <div class="topbar-patient">
                 <div class="patient-avatar" id="patient-avatar">N/A</div>
                 <div class="patient-meta">
                     <div class="patient-name-row">
                         <h1 class="patient-name" id="display-patient-name">Novo Paciente</h1>
                         <span class="risk-badge-inline" id="risk-badge-inline">
-                            <span class="risk-dot-sm green"></span>
-                            Baixo Risco
+                            <span class="risk-dot-sm green"></span>Baixo Risco
                         </span>
                     </div>
                     <div class="patient-sub">
                         REG: <span id="display-reg">---</span>
-                        <span class="sep">·</span>
-                        Ciclo: <span id="display-ciclo">---</span>
-                        <span class="sep">·</span>
-                        Protocolo: <span id="display-protocol">---</span>
+                        <span class="sep">·</span>Ciclo: <span id="display-ciclo">---</span>
+                        <span class="sep">·</span>Protocolo: <span id="display-protocol">---</span>
                     </div>
                 </div>
             </div>
-
-            <!-- Tabs de navegação (cockpit) -->
             <nav class="topbar-tabs">
                 <button class="tab active" data-target="module-id">Identificação</button>
                 <button class="tab" data-target="module-triage">Triagem</button>
-                <button class="tab" data-target="module-nanda">Plano NANDA-NIC-NOC</button>
+                <button class="tab" data-target="module-nanda">Plano SAE</button>
                 <button class="tab" data-target="module-followup">Seguimento</button>
                 <button class="tab" data-target="module-tasks">Tarefas</button>
+                <button class="tab" data-target="module-indicators">Indicadores</button>
+                <button class="tab" data-target="module-evolution">Evolução</button>
             </nav>
-
-            <!-- Ações rápidas -->
             <div class="topbar-actions">
                 <button class="btn-concluir" id="btn-concluir">
                     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
@@ -122,48 +164,61 @@
             </div>
         </header>
 
-        <!-- ═══ MÓDULOS ═══ -->
+        <!-- CONTENT -->
         <div class="content-area">
 
-            <!-- ── Módulo 1: Identificação ── -->
+            <!-- ── MÓDULO 1: IDENTIFICAÇÃO ── -->
             <section id="module-id" class="module active">
                 <div class="module-grid-2">
-
-                    <!-- Card identificação -->
                     <div class="card">
                         <div class="card-header">
                             <span class="card-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></span>
-                            <h2 class="card-title">Identificação</h2>
+                            <h2 class="card-title">Dados do Paciente</h2>
                         </div>
                         <div class="form-grid-2">
                             <div class="field-group">
-                                <label>Registro Institucional</label>
-                                <input type="text" id="reg-inst" placeholder="Ex: RE1234567">
+                                <label>Nº Registro Institucional</label>
+                                <input type="text" id="reg-inst" placeholder="Ex: 123698-8">
                             </div>
                             <div class="field-group">
                                 <label>Iniciais do Paciente</label>
-                                <input type="text" id="pac-iniciais" placeholder="Ex: M. F.">
+                                <input type="text" id="pac-iniciais" placeholder="Ex: M. D. G">
                             </div>
                             <div class="field-group">
-                                <label>Idade</label>
-                                <input type="number" id="pac-idade" placeholder="Ex: 52">
+                                <label>Data de Nascimento</label>
+                                <input type="date" id="pac-nascimento">
                             </div>
                             <div class="field-group">
-                                <label>Telefone</label>
+                                <label>Idade (calculada)</label>
+                                <input type="text" id="pac-idade" readonly placeholder="Calculada automaticamente" style="background:#f8fafc">
+                            </div>
+                            <div class="field-group">
+                                <label>Sexo</label>
+                                <select id="pac-sexo" class="select-field">
+                                    <option value="">Selecione...</option>
+                                    <option value="F">Feminino</option>
+                                    <option value="M">Masculino</option>
+                                    <option value="O">Outro</option>
+                                </select>
+                            </div>
+                            <div class="field-group">
+                                <label>Telefone 1</label>
                                 <input type="tel" id="pac-tel" placeholder="(11) 99999-9999">
                             </div>
                             <div class="field-group">
-                                <label>Protocolo Atual</label>
-                                <input type="text" id="pac-protocol" placeholder="Ex: FOLFIRI">
+                                <label>Telefone 2</label>
+                                <input type="tel" id="pac-tel2" placeholder="(11) 99999-9999">
                             </div>
                             <div class="field-group">
-                                <label>Ciclo Atual</label>
-                                <input type="number" id="pac-ciclo" placeholder="Ex: 1">
+                                <label>Nome do Cuidador / Responsável</label>
+                                <input type="text" id="pac-cuidador" placeholder="Nome completo">
+                            </div>
+                            <div class="field-group">
+                                <label>Telefone do Cuidador</label>
+                                <input type="tel" id="pac-tel-cuidador" placeholder="(11) 99999-9999">
                             </div>
                         </div>
                     </div>
-
-                    <!-- Card protocolo / resumo -->
                     <div class="card">
                         <div class="card-header">
                             <span class="card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></span>
@@ -175,21 +230,25 @@
                                 <input type="text" id="pac-dx" placeholder="Ex: Adenocarcinoma de cólon">
                             </div>
                             <div class="field-group">
+                                <label>Protocolo Atual</label>
+                                <input type="text" id="pac-protocol" placeholder="Ex: FOLFIRI">
+                            </div>
+                            <div class="field-group">
+                                <label>Ciclo Atual</label>
+                                <input type="number" id="pac-ciclo" placeholder="Ex: 3">
+                            </div>
+                            <div class="field-group">
                                 <label>Data Última QT</label>
                                 <input type="date" id="pac-ultima-qt">
                             </div>
                             <div class="field-group">
-                                <label>Data Próxima QT</label>
+                                <label>Data Prevista Próxima QT</label>
                                 <input type="date" id="pac-proxima-qt">
-                            </div>
-                            <div class="field-group full">
-                                <label>Nome do Cuidador</label>
-                                <input type="text" id="pac-cuidador" placeholder="Ex: Ana Maria">
                             </div>
                         </div>
                         <div class="card-action-row">
-                            <button class="btn-primary" onclick="document.querySelector('[data-target=module-triage]').click()">
-                                Avançar para Triagem
+                            <button class="btn-primary" id="btn-salvar-id">
+                                Salvar e Ir para Triagem
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                             </button>
                         </div>
@@ -197,18 +256,67 @@
                 </div>
             </section>
 
-            <!-- ── Módulo 2: Triagem ── -->
+            <!-- ── MÓDULO 2: TRIAGEM ── -->
             <section id="module-triage" class="module">
-                <div class="module-grid-2">
 
-                    <!-- Card ECOG + sintomas -->
+                <!-- Linha 1: Tipo consulta + Enfermeiro -->
+                <div class="module-grid-2">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+                            <h2 class="card-title">Dados da Consulta</h2>
+                        </div>
+                        <div class="form-grid-2">
+                            <div class="field-group full">
+                                <label>Tipo de Consulta</label>
+                                <select id="tipo-consulta" class="select-field">
+                                    <option value="">Selecione...</option>
+                                    <option>Consulta de início de tratamento</option>
+                                    <option>Consulta de troca de protocolo</option>
+                                    <option>Consulta de seguimento presencial</option>
+                                    <option>Consulta de seguimento remota</option>
+                                    <option>Consulta não programada / intercorrência</option>
+                                    <option>Consulta de início protocolo via oral</option>
+                                    <option>Outro</option>
+                                </select>
+                            </div>
+                            <div class="field-group" id="tipo-outro-group" style="display:none;">
+                                <label>Especificar</label>
+                                <input type="text" id="tipo-outro" placeholder="Descreva o tipo de consulta">
+                            </div>
+                            <div class="field-group full">
+                                <label>Enfermeiro(a) Oncologista</label>
+                                <input type="text" id="enfermeiro" placeholder="Nome do enfermeiro(a)" list="enfermeiros-list">
+                                <datalist id="enfermeiros-list">
+                                    <option value="Danielle Cabral">
+                                    <option value="Carla Alves">
+                                </datalist>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dados Clínicos -->
                     <div class="card">
                         <div class="card-header">
                             <span class="card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
-                            <h2 class="card-title">Triagem CTCAE v5.0</h2>
+                            <h2 class="card-title">Dados Clínicos</h2>
+                        </div>
+                        <div class="form-grid-2">
+                            <div class="field-group">
+                                <label>Peso atual (kg)</label>
+                                <input type="number" id="peso" placeholder="Ex: 70" step="0.1" oninput="calcASC()">
+                            </div>
+                            <div class="field-group">
+                                <label>Altura (cm)</label>
+                                <input type="number" id="altura" placeholder="Ex: 170" oninput="calcASC()">
+                            </div>
+                            <div class="field-group full">
+                                <label>Superfície Corporal (m²) — Fórmula Mosteller</label>
+                                <input type="text" id="asc" readonly placeholder="Calculada automaticamente" style="background:#f0f7ff; font-weight:600; color:#175C9D">
+                            </div>
                         </div>
 
-                        <div class="section-label">ECOG Performance Status</div>
+                        <div class="section-label mt-16">ECOG Performance Status</div>
                         <div class="ecog-group" id="ecog-group">
                             <label class="ecog-btn"><input type="radio" name="ecog" value="0"><span>0</span><small>Assintomático</small></label>
                             <label class="ecog-btn"><input type="radio" name="ecog" value="1"><span>1</span><small>Sintomático leve</small></label>
@@ -216,60 +324,209 @@
                             <label class="ecog-btn risk-ecog"><input type="radio" name="ecog" value="3"><span>3</span><small>Acamado &gt;50%</small></label>
                             <label class="ecog-btn risk-ecog"><input type="radio" name="ecog" value="4"><span>4</span><small>Totalmente acamado</small></label>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="section-label mt-16">Sintomas CTCAE</div>
-                        <div class="symptoms-list" id="symptoms-list">
-                            <div class="symptom-row" data-sym="nausea"><div class="sym-name">Náusea</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
-                            <div class="symptom-row" data-sym="vomito"><div class="sym-name">Vômito</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
-                            <div class="symptom-row" data-sym="fadiga"><div class="sym-name">Fadiga</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
-                            <div class="symptom-row" data-sym="dor"><div class="sym-name">Dor</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
-                            <div class="symptom-row" data-sym="diarreia"><div class="sym-name">Diarreia</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
-                            <div class="symptom-row" data-sym="dispneia"><div class="sym-name">Dispneia</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
-                            <div class="symptom-row" data-sym="febre"><div class="sym-name">Febre ≥38º</div><div class="sym-grades"><button class="sg active" data-g="0">Não</button><button class="sg risk" data-g="3">Sim</button></div></div>
-                            <div class="symptom-row" data-sym="mucosite"><div class="sym-name">Mucosite</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
-                            <div class="symptom-row" data-sym="neuropatia"><div class="sym-name">Neuropatia</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
-                            <div class="symptom-row" data-sym="ansiedade"><div class="sym-name">Ansiedade</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                <!-- Linha 2: Comorbidades + Medicamentos + Suporte Social -->
+                <div class="module-grid-3 mt-16">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon amber"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+                            <h2 class="card-title">Comorbidades</h2>
+                        </div>
+                        <div class="checkbox-list">
+                            <label class="cb-item"><input type="checkbox" name="comorbidade" value="has"> Hipertensão arterial</label>
+                            <label class="cb-item"><input type="checkbox" name="comorbidade" value="dm"> Diabetes mellitus</label>
+                            <label class="cb-item"><input type="checkbox" name="comorbidade" value="icc"> ICC</label>
+                            <label class="cb-item"><input type="checkbox" name="comorbidade" value="irc"> IRC</label>
+                            <label class="cb-item"><input type="checkbox" name="comorbidade" value="dpoc"> DPOC / Asma</label>
+                            <label class="cb-item"><input type="checkbox" name="comorbidade" value="tireoide"> Hipotireoidismo / Hipertireoidismo</label>
+                            <label class="cb-item"><input type="checkbox" name="comorbidade" value="coronario"> Coronariopatias</label>
+                            <label class="cb-item"><input type="checkbox" name="comorbidade" value="outros"> Outros:</label>
+                            <input type="text" id="comorbidade-outros" placeholder="Especificar" class="input-sm mt-4">
                         </div>
                     </div>
 
-                    <!-- Card classificação de risco -->
                     <div class="card">
                         <div class="card-header">
-                            <span class="card-icon amber"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
-                            <h2 class="card-title">Classificação de Risco</h2>
+                            <span class="card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg></span>
+                            <h2 class="card-title">Medicamentos em Uso</h2>
+                        </div>
+                        <textarea id="medicamentos" placeholder="Liste os medicamentos de uso contínuo e automedicação relevante..." rows="8" class="textarea-field"></textarea>
+
+                        <div class="section-label mt-16">Suporte Social</div>
+                        <div class="radio-col" id="suporte-social-group">
+                            <label class="rc-item"><input type="radio" name="suporte" value="cuidador_fixo"> Tem cuidador fixo</label>
+                            <label class="rc-item"><input type="radio" name="suporte" value="suporte_familiar"> Tem suporte familiar sem cuidador fixo</label>
+                            <label class="rc-item"><input type="radio" name="suporte" value="mora_familia"> Mora com familiares</label>
+                            <label class="rc-item"><input type="radio" name="suporte" value="sozinho_esporadico"> Mora sozinho com suporte esporádico</label>
+                            <label class="rc-item risk-item"><input type="radio" name="suporte" value="sozinho_sem_suporte"> Mora sozinho sem suporte ⚠️</label>
+                            <label class="rc-item"><input type="radio" name="suporte" value="outro"> Outro:</label>
+                            <input type="text" id="suporte-outro" placeholder="Especificar" class="input-sm mt-4">
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon amber"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span>
+                            <h2 class="card-title">Condição Nutricional</h2>
+                        </div>
+                        <div class="radio-col">
+                            <label class="rc-item"><input type="radio" name="nutricao" value="adequada"> Alimentação adequada</label>
+                            <label class="rc-item"><input type="radio" name="nutricao" value="reducao_leve"> Redução de apetite leve</label>
+                            <label class="rc-item"><input type="radio" name="nutricao" value="reducao_moderada"> Redução de apetite moderada</label>
+                            <label class="rc-item risk-item"><input type="radio" name="nutricao" value="nao_alimentando"> Não está conseguindo se alimentar ⚠️</label>
+                            <label class="rc-item risk-item"><input type="radio" name="nutricao" value="liquidos"> Ingesta restrita a líquidos ⚠️</label>
+                            <label class="rc-item"><input type="radio" name="nutricao" value="outros"> Outros:</label>
+                            <input type="text" id="nutricao-outros" placeholder="Especificar" class="input-sm mt-4">
                         </div>
 
-                        <!-- Indicador grande de risco -->
-                        <div class="risk-display" id="risk-display">
+                        <div class="section-label mt-16">Perda de Peso (30 dias)</div>
+                        <div class="radio-col">
+                            <label class="rc-item"><input type="radio" name="perda_peso" value="sem_perda"> Sem perda de peso</label>
+                            <label class="rc-item"><input type="radio" name="perda_peso" value="menos_5"> Perda de &lt; 5%</label>
+                            <label class="rc-item"><input type="radio" name="perda_peso" value="5_10"> Perda entre 5% e 10%</label>
+                            <label class="rc-item risk-item"><input type="radio" name="perda_peso" value="mais_10"> Perda &gt; 10% ⚠️</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Linha 3: Sintomas CTCAE -->
+                <div class="module-grid-2 mt-16">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon red"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+                            <h2 class="card-title">Triagem de Sintomas — CTCAE v5.0</h2>
+                            <span class="card-badge">Grau 3-4 = Alerta</span>
+                        </div>
+                        <div class="symptoms-list" id="symptoms-list">
+                            <div class="symptom-row" data-sym="nausea"><div class="sym-name">Náusea</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="vomito"><div class="sym-name">Vômito</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="diarreia"><div class="sym-name">Diarreia</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="constipacao"><div class="sym-name">Constipação Intestinal</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="dor"><div class="sym-name">Dor (qualquer localização)</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="fadiga"><div class="sym-name">Fadiga / Cansaço</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="febre"><div class="sym-name">Febre (≥ 38°C) ⚠️</div><div class="sym-grades"><button class="sg active" data-g="0">Não</button><button class="sg risk" data-g="3">Sim</button></div></div>
+                            <div class="symptom-row" data-sym="calafrio"><div class="sym-name">Calafrio / Tremor</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="dispneia"><div class="sym-name">Dispneia / Falta de ar ⚠️</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="tosse"><div class="sym-name">Tosse nova</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="neuropatia"><div class="sym-name">Neuropatia periférica</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="pele"><div class="sym-name">Alteração de pele</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="insonia"><div class="sym-name">Alteração do sono / Insônia</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="ansiedade"><div class="sym-name">Ansiedade</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="tristeza"><div class="sym-name">Tristeza / Choro frequente</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="confusao"><div class="sym-name">Confusão mental / Desorientação</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="edema"><div class="sym-name">Edema</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="outros_sint">
+                                <div class="sym-name">Outros sintomas</div>
+                                <input type="text" id="outros-sintomas" placeholder="Descreva..." class="input-sm" style="width:200px">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fatores de risco + Exame físico + Exames lab -->
+                    <div style="display:flex; flex-direction:column; gap:16px;">
+
+                        <!-- Fatores de risco -->
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-icon red"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></span>
+                                <h2 class="card-title">Fatores de Risco</h2>
+                            </div>
+                            <div class="risk-factors-grid">
+                                <div class="rf-item"><span>Toxicidade grave ciclo anterior (G3-4)</span><div class="rf-options"><label><input type="radio" name="rf_toxicidade" value="sim"> Sim</label><label><input type="radio" name="rf_toxicidade" value="nao"> Não</label><label><input type="radio" name="rf_toxicidade" value="primeiro"> 1º ciclo</label></div></div>
+                                <div class="rf-item"><span>Internação não planejada (30 dias)</span><div class="rf-options"><label><input type="radio" name="rf_internacao" value="sim"> Sim</label><label><input type="radio" name="rf_internacao" value="nao"> Não</label></div></div>
+                                <div class="rf-item"><span>Ida ao Pronto Atendimento (30 dias)</span><div class="rf-options"><label><input type="radio" name="rf_pa" value="sim"> Sim</label><label><input type="radio" name="rf_pa" value="nao"> Não</label></div></div>
+                                <div class="rf-item"><span>Protocolo de alta toxicidade</span><div class="rf-options"><label><input type="radio" name="rf_protocolo" value="sim"> Sim</label><label><input type="radio" name="rf_protocolo" value="nao"> Não</label></div></div>
+                                <div class="rf-item"><span>Neutropenia prévia documentada</span><div class="rf-options"><label><input type="radio" name="rf_neutropenia" value="sim"> Sim</label><label><input type="radio" name="rf_neutropenia" value="nao"> Não</label></div></div>
+                                <div class="rf-item"><span>Paciente idoso (≥70) ou pediátrico (&lt;18)</span><div class="rf-options"><label><input type="radio" name="rf_idade" value="sim"> Sim</label><label><input type="radio" name="rf_idade" value="nao"> Não</label></div></div>
+                                <div class="rf-item"><span>Mora sozinho ou sem cuidador</span><div class="rf-options"><label><input type="radio" name="rf_sozinho" value="sim"> Sim</label><label><input type="radio" name="rf_sozinho" value="nao"> Não</label></div></div>
+                                <div class="rf-item"><span>Dificuldade de acesso ao serviço</span><div class="rf-options"><label><input type="radio" name="rf_acesso" value="sim"> Sim</label><label><input type="radio" name="rf_acesso" value="nao"> Não</label></div></div>
+                            </div>
+                        </div>
+
+                        <!-- Classificação de Risco -->
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-icon amber"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+                                <h2 class="card-title">Classificação de Risco</h2>
+                            </div>
                             <div class="risk-level-card green" id="risk-level-card">
                                 <div class="risk-pulse-ring" id="risk-pulse-ring"></div>
-                                <div class="risk-icon" id="risk-icon">
-                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                </div>
+                                <div class="risk-icon green" id="risk-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
                                 <div class="risk-level-text" id="risk-level-text">Baixo Risco</div>
                                 <div class="risk-sublabel" id="risk-sublabel">Sem critérios de alerta</div>
                             </div>
-                        </div>
-
-                        <!-- Critérios ativos -->
-                        <div class="section-label mt-16">Critérios Ativos</div>
-                        <div class="criteria-list" id="criteria-list">
-                            <div class="criteria-empty">Nenhum critério de risco identificado.</div>
-                        </div>
-
-                        <!-- Barra de progresso de risco -->
-                        <div class="risk-bar-wrap mt-16">
-                            <div class="risk-bar-labels">
-                                <span>Baixo</span><span>Moderado</span><span>Alto</span>
+                            <div class="risk-bar-wrap mt-16">
+                                <div class="risk-bar-labels"><span>Baixo</span><span>Moderado</span><span>Alto</span></div>
+                                <div class="risk-bar-track">
+                                    <div class="risk-bar-fill" id="risk-bar-fill" style="width:5%"></div>
+                                    <div class="risk-bar-thumb" id="risk-bar-thumb" style="left:5%"></div>
+                                </div>
                             </div>
-                            <div class="risk-bar-track">
-                                <div class="risk-bar-fill" id="risk-bar-fill" style="width:5%"></div>
-                                <div class="risk-bar-thumb" id="risk-bar-thumb" style="left:5%"></div>
+                            <div class="criteria-list mt-16" id="criteria-list">
+                                <div class="criteria-empty">Nenhum critério de risco identificado.</div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
+                <!-- Linha 4: Exame físico + Laboratorial -->
+                <div class="module-grid-2 mt-16">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+                            <h2 class="card-title">Exame Físico</h2>
+                        </div>
+                        <div class="form-grid-2">
+                            <div class="field-group"><label>Pressão Arterial (mmHg)</label><input type="text" id="ef-pa" placeholder="Ex: 120/80"></div>
+                            <div class="field-group"><label>Freq. Cardíaca (bpm)</label><input type="number" id="ef-fc" placeholder="Ex: 80"></div>
+                            <div class="field-group"><label>Freq. Respiratória (irpm)</label><input type="number" id="ef-fr" placeholder="Ex: 18"></div>
+                            <div class="field-group"><label>Temperatura Axilar (°C)</label><input type="number" id="ef-temp" placeholder="Ex: 36.5" step="0.1"></div>
+                            <div class="field-group"><label>Saturação O2 (%)</label><input type="number" id="ef-sato2" placeholder="Ex: 98"></div>
+                            <div class="field-group">
+                                <label>Hidratação</label>
+                                <select id="ef-hidratacao" class="select-field">
+                                    <option value="">Selecione...</option>
+                                    <option>Hidratado</option>
+                                    <option>Desidratação leve</option>
+                                    <option>Desidratação moderada</option>
+                                    <option>Desidratação grave</option>
+                                </select>
+                            </div>
+                            <div class="field-group full">
+                                <label>Mucosa Oral</label>
+                                <select id="ef-mucosa" class="select-field">
+                                    <option value="">Selecione...</option>
+                                    <option>Normocorada e úmida</option>
+                                    <option>Hipocorada</option>
+                                    <option>Mucosite G1</option>
+                                    <option>Mucosite G2</option>
+                                    <option>Mucosite G3-4</option>
+                                </select>
+                            </div>
+                            <div class="field-group full">
+                                <label>Observações do Exame Físico</label>
+                                <textarea id="ef-obs" rows="3" placeholder="Descreva achados relevantes..." class="textarea-field"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg></span>
+                            <h2 class="card-title">Resultados de Exames Laboratoriais</h2>
+                        </div>
+                        <div class="form-grid-2">
+                            <div class="field-group full"><label>Data do Hemograma</label><input type="date" id="lab-data"></div>
+                            <div class="field-group"><label>Leucócitos (cél/mm³)</label><input type="number" id="lab-leuco" placeholder="Ex: 5000" step="0.01"></div>
+                            <div class="field-group"><label>Neutrófilos (cél/mm³)</label><input type="number" id="lab-neutro" placeholder="Ex: 2500" step="0.01"></div>
+                            <div class="field-group"><label>Plaquetas (cél/mm³)</label><input type="number" id="lab-plaquetas" placeholder="Ex: 150000"></div>
+                            <div class="field-group"><label>Hemoglobina (g/dL)</label><input type="number" id="lab-hb" placeholder="Ex: 12.5" step="0.1"></div>
+                            <div class="field-group"><label>Creatinina (mg/dL)</label><input type="number" id="lab-creatinina" placeholder="Ex: 0.9" step="0.01"></div>
+                        </div>
                         <div class="card-action-row mt-16">
-                            <button class="btn-primary" onclick="document.querySelector('[data-target=module-nanda]').click()">
+                            <button class="btn-primary" onclick="activateModule('module-nanda')">
                                 Ir para Plano SAE
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                             </button>
@@ -278,7 +535,7 @@
                 </div>
             </section>
 
-            <!-- ── Módulo 3: NANDA NIC NOC ── -->
+            <!-- ── MÓDULO 3: NANDA NIC NOC ── -->
             <section id="module-nanda" class="module">
                 <div class="card">
                     <div class="card-header">
@@ -286,56 +543,103 @@
                         <h2 class="card-title">Plano de Cuidados — SAE Estruturada</h2>
                         <span class="card-badge">NANDA · NIC · NOC</span>
                     </div>
-
                     <div class="nanda-layout">
-                        <!-- Lista de diagnósticos -->
                         <div class="nanda-left">
                             <div class="search-field">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                                 <input type="text" id="dx-search" placeholder="Buscar diagnóstico NANDA...">
                             </div>
-                            <div class="dx-list" id="dx-list">
-                                <div class="loading-state">Carregando diagnósticos do banco...</div>
-                            </div>
+                            <div class="dx-list" id="dx-list"><div class="loading-state">Carregando diagnósticos...</div></div>
                         </div>
-
-                        <!-- Painel NIC NOC -->
                         <div class="nanda-right" id="nic-noc-panel">
                             <div class="empty-panel">
                                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-                                <p>Selecione um diagnóstico para ver as Intervenções NIC e Resultados NOC sugeridos</p>
+                                <p>Selecione um diagnóstico para ver as Intervenções NIC e Resultados NOC</p>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Conduta de Seguimento -->
+                    <div class="section-divider mt-16"></div>
+                    <div class="card-header mt-16">
+                        <span class="card-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0"/><polyline points="12 8 12 12 14 14"/></svg></span>
+                        <h2 class="card-title">Conduta de Seguimento Definida</h2>
+                    </div>
+                    <div class="form-grid-2 mt-16">
+                        <div class="field-group full">
+                            <label>Conduta</label>
+                            <select id="followup-conduta" class="select-field">
+                                <option value="">Selecione...</option>
+                                <option value="padrao_48h">Seguimento padrão – contato telefônico em 48h</option>
+                                <option value="reforcado_24h">Seguimento reforçado – contato telefônico em 24h</option>
+                                <option value="intensivo_24h">Seguimento intensivo – contato em 24h + presencial no próximo ciclo</option>
+                                <option value="encaminhamento_medico">Encaminhamento imediato para avaliação médica</option>
+                                <option value="servico_saude">Orientação para procurar serviço de saúde</option>
+                                <option value="pa_hc">Orientação para procurar PA-HC</option>
+                            </select>
+                        </div>
+                        <div class="field-group">
+                            <label>Modalidade</label>
+                            <select id="followup-modalidade" class="select-field">
+                                <option value="telefonico">Telefônico</option>
+                                <option value="presencial">Presencial</option>
+                            </select>
+                        </div>
+                        <div class="field-group">
+                            <label>Data/Hora do Seguimento</label>
+                            <input type="datetime-local" id="followup-data">
+                        </div>
+                    </div>
+                    <div class="info-box mt-16">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        O seguimento será agendado automaticamente na aba Tarefas conforme a conduta selecionada.
                     </div>
                 </div>
             </section>
 
-            <!-- ── Módulo 4: Seguimento ── -->
+            <!-- ── MÓDULO 4: SEGUIMENTO ── -->
             <section id="module-followup" class="module">
                 <div class="module-grid-2">
                     <div class="card">
                         <div class="card-header">
                             <span class="card-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0"/><polyline points="12 8 12 12 14 14"/></svg></span>
-                            <h2 class="card-title">Conduta de Seguimento</h2>
+                            <h2 class="card-title">Dados do Seguimento</h2>
                         </div>
                         <div class="form-grid-2">
                             <div class="field-group">
-                                <label>Conduta</label>
-                                <select id="followup-conduta" class="select-field">
-                                    <option value="">Selecione...</option>
-                                    <option value="Seguimento padrão (contato em 48h)">Seguimento padrão (48h)</option>
-                                    <option value="Seguimento reforçado (contato em 24h)">Seguimento reforçado (24h)</option>
-                                    <option value="Encaminhamento imediato">Encaminhamento imediato</option>
-                                </select>
-                            </div>
-                            <div class="field-group">
                                 <label>Modalidade</label>
-                                <select id="followup-modalidade" class="select-field">
+                                <select id="seg-modalidade" class="select-field">
                                     <option value="telefonico">Telefônico</option>
                                     <option value="presencial">Presencial</option>
                                 </select>
                             </div>
+                            <div class="field-group">
+                                <label>Momento do Seguimento</label>
+                                <select id="seg-momento" class="select-field">
+                                    <option value="">Selecione...</option>
+                                    <option value="d3">D3 pós-ciclo</option>
+                                    <option value="d4">D4 pós-ciclo</option>
+                                    <option value="d5">D5 pós-ciclo</option>
+                                    <option value="d6">D6 pós-ciclo</option>
+                                    <option value="d7">D7 pós-ciclo</option>
+                                    <option value="programado">Seguimento programado após consulta</option>
+                                    <option value="nao_programado">Seguimento não programado / demanda espontânea</option>
+                                </select>
+                            </div>
+                            <div class="field-group">
+                                <label>Ciclo de Referência</label>
+                                <input type="number" id="seg-ciclo" placeholder="Ex: 3">
+                            </div>
+                            <div class="field-group">
+                                <label>Enfermeiro(a)</label>
+                                <input type="text" id="seg-enfermeiro" placeholder="Nome" list="enfermeiros-list2">
+                                <datalist id="enfermeiros-list2">
+                                    <option value="Danielle Cabral">
+                                    <option value="Carla Alves">
+                                </datalist>
+                            </div>
                         </div>
+
                         <div class="section-label mt-16">Metas do Plano de Cuidado</div>
                         <div class="followup-checklist" id="followup-actions-panel">
                             <div class="empty-state-sm">Complete o Plano SAE para carregar as metas aqui.</div>
@@ -345,70 +649,135 @@
                     <div class="card">
                         <div class="card-header">
                             <span class="card-icon amber"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
-                            <h2 class="card-title">Mini-Triagem de Seguimento</h2>
+                            <h2 class="card-title">Mini-Triagem de Sintomas</h2>
                         </div>
                         <p class="card-desc">Avalie a evolução dos sintomas registrados na consulta anterior.</p>
-                        <div class="followup-symptoms" id="followup-symptoms-panel">
-                            <div class="empty-state-sm">Sintomas da triagem aparecerão aqui.</div>
+                        <div class="symptoms-list" id="seg-symptoms-list">
+                            <div class="symptom-row" data-sym="seg_nausea"><div class="sym-name">Náusea</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="seg_vomito"><div class="sym-name">Vômito</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="seg_dor"><div class="sym-name">Dor</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="seg_fadiga"><div class="sym-name">Fadiga</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            <div class="symptom-row" data-sym="seg_febre"><div class="sym-name">Febre ⚠️</div><div class="sym-grades"><button class="sg active" data-g="0">Não</button><button class="sg risk" data-g="3">Sim</button></div></div>
+                            <div class="symptom-row" data-sym="seg_dispneia"><div class="sym-name">Dispneia ⚠️</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                        </div>
+
+                        <!-- Nova conduta de seguimento -->
+                        <div class="section-label mt-16">Nova Conduta de Seguimento</div>
+                        <select id="seg-conduta" class="select-field mt-8">
+                            <option value="">Selecione...</option>
+                            <option value="padrao_48h">Seguimento padrão – 48h</option>
+                            <option value="reforcado_24h">Seguimento reforçado – 24h</option>
+                            <option value="intensivo_24h">Seguimento intensivo – 24h + presencial</option>
+                            <option value="encaminhamento_medico">Encaminhamento imediato médico</option>
+                            <option value="servico_saude">Procurar serviço de saúde</option>
+                            <option value="pa_hc">Procurar PA-HC</option>
+                        </select>
+                        <div class="field-group mt-8">
+                            <label>Data/Hora do Próximo Contato</label>
+                            <input type="datetime-local" id="seg-prox-data">
+                        </div>
+                        <div class="info-box mt-8">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            O sistema é cíclico — ao concluir, uma nova tarefa será criada automaticamente.
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- ── Módulo 5: Tarefas ── -->
+            <!-- ── MÓDULO 5: TAREFAS ── -->
             <section id="module-tasks" class="module">
                 <div class="card">
                     <div class="card-header">
                         <span class="card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
                         <h2 class="card-title">Agenda e Tarefas Assistenciais</h2>
                         <div class="header-filters">
-                            <span class="filter-chip active">Todas</span>
-                            <span class="filter-chip">Pendentes</span>
-                            <span class="filter-chip">Concluídas</span>
+                            <span class="filter-chip active" data-filter="todas">Todas</span>
+                            <span class="filter-chip" data-filter="pendente">Pendentes</span>
+                            <span class="filter-chip" data-filter="concluida">Concluídas</span>
                         </div>
                     </div>
                     <div class="tasks-table-wrap">
                         <table class="tasks-table">
-                            <thead>
-                                <tr>
-                                    <th>Status</th>
-                                    <th>Paciente</th>
-                                    <th>Tipo de Tarefa</th>
-                                    <th>Prioridade</th>
-                                    <th>Prazo</th>
-                                    <th>Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tasks-table-body">
-                                <tr><td colspan="6" class="table-empty">Nenhuma tarefa na agenda.</td></tr>
-                            </tbody>
+                            <thead><tr><th>Status</th><th>Paciente</th><th>Tipo de Tarefa</th><th>Prioridade</th><th>Prazo</th><th>Responsável</th><th>Ação</th></tr></thead>
+                            <tbody id="tasks-table-body"><tr><td colspan="7" class="table-empty">Nenhuma tarefa na agenda.</td></tr></tbody>
                         </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── MÓDULO 6: INDICADORES ── -->
+            <section id="module-indicators" class="module">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+                        <h2 class="card-title">Indicadores e Dados Estatísticos</h2>
+                    </div>
+                    <div class="indicators-grid" id="indicators-grid">
+                        <div class="indicator-card">
+                            <div class="indicator-value" id="ind-total-atend">--</div>
+                            <div class="indicator-label">Total de Atendimentos</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-value" id="ind-tarefas-pend">--</div>
+                            <div class="indicator-label">Tarefas Pendentes</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-value" id="ind-tarefas-conc">--</div>
+                            <div class="indicator-label">Tarefas Concluídas</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-value" id="ind-alto-risco">--</div>
+                            <div class="indicator-label">Pacientes Alto Risco</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-value" id="ind-seguimentos">--</div>
+                            <div class="indicator-label">Seguimentos Realizados</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-value" id="ind-pendencias">--</div>
+                            <div class="indicator-label">Pendências Abertas</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── MÓDULO 7: EVOLUÇÃO CLÍNICA ── -->
+            <section id="module-evolution" class="module">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+                        <h2 class="card-title">Linha de Evolução Clínica</h2>
+                    </div>
+                    <div id="evolution-chart-area">
+                        <div class="empty-panel" style="min-height:300px;">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                            <p>Realize consultas e seguimentos para visualizar a evolução clínica do paciente.</p>
+                        </div>
                     </div>
                 </div>
             </section>
 
         </div><!-- /content-area -->
     </div><!-- /main-area -->
-
-</div><!-- /app-shell -->
+</div><!-- /app-main -->
 
 <!-- ═══ MODAL RESUMO ═══ -->
 <div id="summary-modal" class="modal-backdrop" style="display:none;">
     <div class="modal-box">
         <div class="modal-header">
-            <h2>Resumo da Consulta</h2>
+            <h2>Resumo da Consulta — Prontuário</h2>
             <button class="modal-close" id="close-modal">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
         </div>
         <div class="modal-body">
             <div class="modal-col">
-                <div class="modal-section-label">Visualização</div>
+                <div class="modal-section-label">Visualização Estruturada</div>
                 <div id="summary-visual-preview" class="summary-preview"></div>
             </div>
             <div class="modal-divider"></div>
             <div class="modal-col">
-                <div class="modal-section-label">Texto para Prontuário</div>
+                <div class="modal-section-label">Texto para Prontuário Eletrônico</div>
                 <textarea id="summary-text" readonly></textarea>
                 <button class="btn-primary full-width" id="copy-clipboard">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
