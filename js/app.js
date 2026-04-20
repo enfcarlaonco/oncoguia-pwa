@@ -42,7 +42,7 @@ function activateModule(targetId) {
     if (mod) mod.classList.add('active');
     document.querySelectorAll(`[data-target="${targetId}"]`).forEach(el => el.classList.add('active'));
 
-    if (targetId === 'module-nanda'      && state.nandaCache.length === 0) loadNanda();
+    if (targetId === 'module-nanda') loadNanda(document.getElementById('dx-search')?.value || '');
     if (targetId === 'module-followup')  buildFollowupPanel();
     if (targetId === 'module-tasks')     loadTarefas();
     if (targetId === 'module-indicators') loadIndicators();
@@ -371,9 +371,16 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadNanda(filter = '') {
         const list = document.getElementById('dx-list');
         if (state.nandaCache.length === 0) {
-            list.innerHTML = '<div class="loading-state">Carregando base NANDA...</div>';
-            try { state.nandaCache = await api('GET', '/referencia/nanda'); }
-            catch { list.innerHTML = '<div class="loading-state" style="color:#DC2626">Erro ao carregar.</div>'; return; }
+            list.innerHTML = '<div class="loading-state">Carregando diagnósticos...</div>';
+            try {
+                const result = await api('GET', '/referencia/nanda');
+                console.log('[NANDA] carregados:', result.length);
+                state.nandaCache = result;
+            } catch(err) {
+                console.error('[NANDA] erro:', err);
+                list.innerHTML = `<div class="loading-state" style="color:#DC2626">Erro ao carregar. <button onclick="loadNanda()" style="color:#175C9D;background:none;border:none;cursor:pointer;text-decoration:underline">Tentar novamente</button></div>`;
+                return;
+            }
         }
         renderNandaList(filter);
     }
@@ -679,4 +686,7 @@ ${followupData ? 'Agendado para: '+new Date(followupData).toLocaleString('pt-BR'
 
     // Inicializa risk
     evaluateRisk();
+    // Expõe funções globais
+    window.loadNanda = loadNanda;
+    window.activateModule = activateModule;
 });
