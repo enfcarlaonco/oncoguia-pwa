@@ -153,6 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('pac-iniciais').addEventListener('input', e => {
         state.patient.initials = e.target.value.toUpperCase();
+        e.target.value = e.target.value.toUpperCase();
         document.getElementById('display-patient-name').textContent = state.patient.initials || 'Novo Paciente';
         document.getElementById('patient-avatar').textContent = state.patient.initials.substring(0,2) || 'N/A';
     });
@@ -403,19 +404,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const panel = document.getElementById('nic-noc-panel');
         panel.innerHTML = '<div class="loading-state" style="padding:24px">Carregando sugestões...</div>';
         try {
-            const { intervencoes_nic, resultados_noc } = await api('GET', `/referencia/nanda/${codigo}/sugestoes`);
-            const nicHtml = intervencoes_nic.map(i => `
-                <div class="tag-item nic${state.selectedNicNoc.find(x => x.id === i.nic_id_lc) ? ' checked' : ''}"
-                     data-id="${i.nic_id_lc}" data-tipo="nic" data-codigo="${i.codigo_nic}"
-                     data-texto="${i.nome_intervencao.replace(/"/g,'&quot;')}">
-                    ${i.nome_intervencao}<span class="tag-check">✓</span>
-                </div>`).join('');
-            const nocHtml = resultados_noc.map(r => `
-                <div class="tag-item noc${state.selectedNicNoc.find(x => x.id === r.noc_id_lc) ? ' checked' : ''}"
-                     data-id="${r.noc_id_lc}" data-tipo="noc" data-codigo="${r.codigo_noc}"
-                     data-texto="${r.nome_resultado.replace(/"/g,'&quot;')}">
-                    ${r.nome_resultado}<span class="tag-check">✓</span>
-                </div>`).join('');
+            const data = await api('GET', `/referencia/nanda/${codigo}/sugestoes`);
+            console.log('[NIC/NOC]', data);
+            const intervencoes_nic = data.intervencoes_nic || [];
+            const resultados_noc = data.resultados_noc || [];
+            const nicHtml = intervencoes_nic.map(i => {
+                const uid = `nic_${i.codigo_nic}`;
+                const checked = state.selectedNicNoc.find(x => x.id === uid) ? ' checked' : '';
+                const texto = (i.nome_intervencao||'').replace(/"/g,'&quot;');
+                return `<div class="tag-item nic${checked}" data-id="${uid}" data-tipo="nic" data-codigo="${i.codigo_nic}" data-texto="${texto}">${i.nome_intervencao}<span class="tag-check">✓</span></div>`;
+            }).join('');
+            const nocHtml = resultados_noc.map(r => {
+                const uid = `noc_${r.codigo_noc}`;
+                const checked = state.selectedNicNoc.find(x => x.id === uid) ? ' checked' : '';
+                const texto = (r.nome_resultado||'').replace(/"/g,'&quot;');
+                return `<div class="tag-item noc${checked}" data-id="${uid}" data-tipo="noc" data-codigo="${r.codigo_noc}" data-texto="${texto}">${r.nome_resultado}<span class="tag-check">✓</span></div>`;
+            }).join('');
             panel.innerHTML = `
                 <div class="nic-noc-section-title nic-title">Intervenções NIC</div>
                 <div class="tag-row">${nicHtml || '<div class="loading-state">Nenhuma intervenção.</div>'}</div>
@@ -445,8 +449,8 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 await api('PUT', `/consultas/${state.consultaId}/plano`, {
                     diagnosticos: [{ codigo_nanda: state.nandaSelectedCodigo, prioridade: 1, origem: 'selecionado' }],
-                    intervencoes: state.selectedNicNoc.filter(x => x.tipo === 'nic').map(x => ({ codigo_nic: x.codigo, nic_id_lc: x.id })),
-                    resultados_esperados: state.selectedNicNoc.filter(x => x.tipo === 'noc').map(x => ({ codigo_noc: x.codigo, noc_id_lc: x.id })),
+                    intervencoes: state.selectedNicNoc.filter(x => x.tipo === 'nic').map(x => ({ codigo_nic: x.codigo })),
+                    resultados_esperados: state.selectedNicNoc.filter(x => x.tipo === 'noc').map(x => ({ codigo_noc: x.codigo })),
                 });
             } catch {}
         }, 1500);
@@ -530,9 +534,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const tarefas = await api('GET', '/tarefas');
             const pendentes  = tarefas.filter(t => t.status === 'pendente').length;
             const concluidas = tarefas.filter(t => t.status === 'concluida').length;
+            const agendadas  = tarefas.filter(t => t.status === 'agendada').length;
+            const altoRisco  = tarefas.filter(t => t.prioridade === 'alta').length;
             document.getElementById('ind-tarefas-pend').textContent = pendentes;
             document.getElementById('ind-tarefas-conc').textContent = concluidas;
             document.getElementById('ind-total-atend').textContent  = tarefas.length;
+            document.getElementById('ind-alto-risco').textContent   = altoRisco;
+            document.getElementById('ind-seguimentos').textContent  = agendadas;
+        } catch {}
+        // Carregar pacientes para contar atendimentos
+        try {
+            const pacientes = await api('GET', '/pacientes/busca?q=');
+            document.getElementById('ind-total-atend').textContent = pacientes.length || '--';
         } catch {}
     }
 
