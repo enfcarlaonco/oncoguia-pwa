@@ -367,8 +367,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1500);
     }
 
-    // ── ABA 3: NANDA NIC NOC ──
-    async function loadNanda(filter = '') {
+    // ── ABA 3: PLANO SAE — MÚLTIPLOS DIAGNÓSTICOS ──
+
+    // Estado do plano — suporta N diagnósticos
+    // state.plano = [ { codigo, titulo, enunciado, nics: [{id,codigo,nome}], nocs: [{id,codigo,nome}] }, ... ]
+    state.plano = [];
+    state.focusDx = null; // diagnóstico em foco no painel NIC/NOC
+
+    // Carrega diagnósticos
+    async function loadNanda(filter) {
+        filter = filter || '';
         const list = document.getElementById('dx-list');
         if (state.nandaCache.length === 0) {
             list.innerHTML = '<div class="loading-state">Carregando diagnósticos...</div>';
@@ -378,109 +386,301 @@ document.addEventListener('DOMContentLoaded', () => {
                 state.nandaCache = result;
             } catch(err) {
                 console.error('[NANDA] erro:', err);
-                list.innerHTML = `<div class="loading-state" style="color:#DC2626">Erro ao carregar. <button onclick="loadNanda()" style="color:#175C9D;background:none;border:none;cursor:pointer;text-decoration:underline">Tentar novamente</button></div>`;
+                list.innerHTML = `<div class="loading-state" style="color:#DC2626">Erro ao carregar. <button onclick="window.loadNanda()" style="color:#175C9D;background:none;border:none;cursor:pointer;text-decoration:underline">Tentar novamente</button></div>`;
                 return;
             }
         }
         renderNandaList(filter);
     }
 
-    function renderNandaList(filter = '') {
-        const list     = document.getElementById('dx-list');
+    function renderNandaList(filter) {
+        filter = filter || '';
+        const list = document.getElementById('dx-list');
         const filtered = state.nandaCache.filter(dx =>
-            dx.titulo_diagnostico.toLowerCase().includes(filter.toLowerCase())
+            dx.titulo_diagnostico.toLowerCase().includes(filter.toLowerCase()) ||
+            dx.codigo_nanda.includes(filter)
         );
-        if (!filtered.length) { list.innerHTML = '<div class="loading-state">Nenhum diagnóstico encontrado.</div>'; return; }
-        list.innerHTML = filtered.map(dx => `
-            <div class="dx-card${state.nandaSelectedCodigo === dx.codigo_nanda ? ' selected' : ''}" data-codigo="${dx.codigo_nanda}">
+        if (!filtered.length) {
+            list.innerHTML = '<div class="loading-state">Nenhum diagnóstico encontrado.</div>';
+            return;
+        }
+        list.innerHTML = filtered.map(dx => {
+            const inPlan = state.plano.find(p => p.codigo === dx.codigo_nanda);
+            const focused = state.focusDx === dx.codigo_nanda;
+            return `<div class="dx-card${focused ? ' focused' : ''}${inPlan ? ' in-plan' : ''}"
+                         data-codigo="${dx.codigo_nanda}" data-titulo="${dx.titulo_diagnostico.replace(/"/g,'&quot;')}">
                 <div class="dx-title">${dx.titulo_diagnostico}</div>
-                <div class="dx-code">[${dx.codigo_nanda}] · ${dx.dominio || ''}</div>
-            </div>`).join('');
+                <div class="dx-code">[${dx.codigo_nanda}]</div>
+            </div>`;
+        }).join('');
+
         list.querySelectorAll('.dx-card').forEach(card => {
             card.addEventListener('click', () => {
-                list.querySelectorAll('.dx-card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                state.nandaSelectedCodigo = card.dataset.codigo;
-                state.nandaSelectedTitle  = card.querySelector('.dx-title').textContent;
-                loadNicNoc(card.dataset.codigo);
+                state.focusDx = card.dataset.codigo;
+                renderNandaList(document.getElementById('dx-search')?.value || '');
+                loadNicNoc(card.dataset.codigo, card.dataset.titulo);
             });
         });
     }
 
-    async function loadNicNoc(codigo) {
+    // Carrega NIC/NOC para um diagnóstico
+    async function loadNicNoc(codigo, titulo) {
         const panel = document.getElementById('nic-noc-panel');
-        panel.innerHTML = '<div class="loading-state" style="padding:24px">Carregando sugestões...</div>';
+        const titleEl = document.getElementById('nicnoc-title');
+        if (titleEl) titleEl.textContent = titulo || 'Intervenções e Resultados';
+
+        panel.innerHTML = '<div class="loading-state" style="padding:24px">Carregando intervenções...</div>';
+
         try {
             const data = await api('GET', `/referencia/nanda/${codigo}/sugestoes`);
-            console.log('[NIC/NOC]', data);
             const intervencoes_nic = data.intervencoes_nic || [];
-            const resultados_noc = data.resultados_noc || [];
+            const resultados_noc   = data.resultados_noc   || [];
+
+            // Diagnóstico já está no plano?
+            const planDx = state.plano.find(p => p.codigo === codigo);
+            const selectedNics = planDx ? planDx.nics.map(n => n.id) : [];
+            const selectedNocs = planDx ? planDx.nocs.map(n => n.id) : [];
+
+            // Enunciado
+            const dxData = state.nandaCache.find(d => d.codigo_nanda === codigo);
+            const enunciado = dxData?.enunciado_pes || '';
+
             const nicHtml = intervencoes_nic.map(i => {
                 const uid = `nic_${i.codigo_nic}`;
-                const checked = state.selectedNicNoc.find(x => x.id === uid) ? ' checked' : '';
+                const checked = selectedNics.includes(uid) ? ' checked' : '';
                 const texto = (i.nome_intervencao||'').replace(/"/g,'&quot;');
-                return `<div class="tag-item nic${checked}" data-id="${uid}" data-tipo="nic" data-codigo="${i.codigo_nic}" data-texto="${texto}">${i.nome_intervencao}<span class="tag-check">✓</span></div>`;
-            }).join('');
+                return `<div class="tag-item nic${checked}" data-id="${uid}" data-tipo="nic"
+                             data-codigo="${i.codigo_nic}" data-texto="${texto}">
+                    ${i.nome_intervencao}<span class="tag-check">✓</span>
+                </div>`;
+            }).join('') || '<div class="loading-state">Nenhuma intervenção cadastrada.</div>';
+
             const nocHtml = resultados_noc.map(r => {
                 const uid = `noc_${r.codigo_noc}`;
-                const checked = state.selectedNicNoc.find(x => x.id === uid) ? ' checked' : '';
+                const checked = selectedNocs.includes(uid) ? ' checked' : '';
                 const texto = (r.nome_resultado||'').replace(/"/g,'&quot;');
-                return `<div class="tag-item noc${checked}" data-id="${uid}" data-tipo="noc" data-codigo="${r.codigo_noc}" data-texto="${texto}">${r.nome_resultado}<span class="tag-check">✓</span></div>`;
-            }).join('');
+                return `<div class="tag-item noc${checked}" data-id="${uid}" data-tipo="noc"
+                             data-codigo="${r.codigo_noc}" data-texto="${texto}">
+                    ${r.nome_resultado}<span class="tag-check">✓</span>
+                </div>`;
+            }).join('') || '<div class="loading-state">Nenhum resultado cadastrado.</div>';
+
             panel.innerHTML = `
-                <div class="nic-noc-section-title nic-title">Intervenções NIC</div>
-                <div class="tag-row">${nicHtml || '<div class="loading-state">Nenhuma intervenção.</div>'}</div>
-                <div class="nic-noc-section-title noc-title">Resultados NOC</div>
-                <div class="tag-row">${nocHtml || '<div class="loading-state">Nenhum resultado.</div>'}</div>`;
+                <div class="nicnoc-dx-header">
+                    <div class="dx-name">${titulo}</div>
+                    ${enunciado ? `<div class="dx-enunciado">${enunciado.replace('Enunciado PES:','').replace('Enunciado PE (Diagnóstico de Risco):','').trim()}</div>` : ''}
+                </div>
+                <div class="nic-noc-section-title nic-title">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg>
+                    Intervenções NIC
+                </div>
+                <div class="tag-row" id="nic-tags">${nicHtml}</div>
+                <div class="nic-noc-section-title noc-title" style="margin-top:14px">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                    Resultados NOC
+                </div>
+                <div class="tag-row" id="noc-tags">${nocHtml}</div>
+                <button class="btn-add-dx-plan" id="btn-add-dx-plan" data-codigo="${codigo}" data-titulo="${(titulo||'').replace(/"/g,'&quot;')}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    ${planDx ? 'Atualizar no Plano' : 'Adicionar ao Plano'}
+                </button>`;
+
+            // Toggle tags
             panel.querySelectorAll('.tag-item').forEach(tag => {
                 tag.addEventListener('click', () => {
                     tag.classList.toggle('checked');
-                    if (tag.classList.contains('checked')) {
-                        state.selectedNicNoc.push({ id: tag.dataset.id, tipo: tag.dataset.tipo, codigo: parseInt(tag.dataset.codigo), texto: tag.dataset.texto });
-                    } else {
-                        state.selectedNicNoc = state.selectedNicNoc.filter(x => x.id !== tag.dataset.id);
-                    }
-                    autoSavePlano();
                 });
             });
-        } catch { panel.innerHTML = '<div class="loading-state" style="color:#DC2626">Erro ao carregar.</div>'; }
+
+            // Botão adicionar/atualizar ao plano
+            document.getElementById('btn-add-dx-plan').addEventListener('click', (e) => {
+                const dxCodigo = e.currentTarget.dataset.codigo;
+                const dxTitulo = e.currentTarget.dataset.titulo;
+
+                const nicsSelected = [...panel.querySelectorAll('.tag-item.nic.checked')].map(t => ({
+                    id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto
+                }));
+                const nocsSelected = [...panel.querySelectorAll('.tag-item.noc.checked')].map(t => ({
+                    id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto
+                }));
+
+                // Remove se já existe, depois readiciona
+                state.plano = state.plano.filter(p => p.codigo !== dxCodigo);
+                state.plano.push({
+                    codigo: dxCodigo,
+                    titulo: dxTitulo,
+                    enunciado: enunciado,
+                    nics: nicsSelected,
+                    nocs: nocsSelected
+                });
+
+                renderPlanoMontado();
+                renderNandaList(document.getElementById('dx-search')?.value || '');
+                autoSavePlano();
+            });
+
+        } catch(err) {
+            console.error('[NIC/NOC]', err);
+            panel.innerHTML = '<div class="loading-state" style="color:#DC2626">Erro ao carregar intervenções.</div>';
+        }
     }
 
-    document.getElementById('dx-search').addEventListener('input', e => renderNandaList(e.target.value));
+    // Renderiza o painel direito "Plano Montado"
+    function renderPlanoMontado() {
+        const el = document.getElementById('plano-montado');
+        const badge = document.getElementById('dx-count-badge');
 
+        if (badge) {
+            badge.textContent = state.plano.length + ' selecionados';
+            badge.className = 'card-badge' + (state.plano.length > 0 ? ' has-items' : '');
+        }
+
+        if (!state.plano.length) {
+            el.innerHTML = `<div class="empty-panel" style="min-height:200px">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <p>Selecione diagnósticos e intervenções para montar o plano</p>
+            </div>`;
+            return;
+        }
+
+        el.innerHTML = state.plano.map((dx, idx) => `
+            <div class="plano-dx-block" data-idx="${idx}">
+                <div class="plano-dx-header" onclick="togglePlanoDx(${idx})">
+                    <div>
+                        <div class="plano-dx-name">${dx.titulo}</div>
+                        <div class="plano-dx-code">[${dx.codigo}] · ${dx.nics.length} NIC · ${dx.nocs.length} NOC</div>
+                    </div>
+                    <div class="plano-dx-actions">
+                        <button class="btn-remove-dx" onclick="event.stopPropagation(); removeDxFromPlan('${dx.codigo}')" title="Remover diagnóstico">✕</button>
+                    </div>
+                </div>
+                <div class="plano-dx-body" id="plano-body-${idx}">
+                    ${dx.nics.length === 0 && dx.nocs.length === 0
+                        ? '<div class="plano-empty-dx">Nenhuma intervenção selecionada</div>'
+                        : ''
+                    }
+                    ${dx.nics.map(n => `
+                        <div class="plano-item nic">
+                            <span class="plano-item-badge">NIC</span>
+                            <span class="plano-item-text">${n.nome}</span>
+                            <button class="plano-item-remove" onclick="removeItemFromPlan('${dx.codigo}','nic','${n.id}')" title="Remover">✕</button>
+                        </div>`).join('')}
+                    ${dx.nocs.map(n => `
+                        <div class="plano-item noc">
+                            <span class="plano-item-badge">NOC</span>
+                            <span class="plano-item-text">${n.nome}</span>
+                            <button class="plano-item-remove" onclick="removeItemFromPlan('${dx.codigo}','noc','${n.id}')" title="Remover">✕</button>
+                        </div>`).join('')}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Toggle expand/collapse diagnóstico no plano
+    window.togglePlanoDx = function(idx) {
+        const body = document.getElementById(`plano-body-${idx}`);
+        if (body) body.style.display = body.style.display === 'none' ? 'flex' : 'none';
+    };
+
+    // Remove diagnóstico completo do plano
+    window.removeDxFromPlan = function(codigo) {
+        state.plano = state.plano.filter(p => p.codigo !== codigo);
+        if (state.focusDx === codigo) {
+            state.focusDx = null;
+            document.getElementById('nic-noc-panel').innerHTML = `
+                <div class="empty-panel">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                    <p>Clique em um diagnóstico para ver as Intervenções NIC e Resultados NOC sugeridos</p>
+                </div>`;
+            const titleEl = document.getElementById('nicnoc-title');
+            if (titleEl) titleEl.textContent = 'Intervenções e Resultados';
+        }
+        renderPlanoMontado();
+        renderNandaList(document.getElementById('dx-search')?.value || '');
+        autoSavePlano();
+    };
+
+    // Remove item NIC ou NOC individual do plano
+    window.removeItemFromPlan = function(dxCodigo, tipo, itemId) {
+        const dx = state.plano.find(p => p.codigo === dxCodigo);
+        if (!dx) return;
+        if (tipo === 'nic') dx.nics = dx.nics.filter(n => n.id !== itemId);
+        if (tipo === 'noc') dx.nocs = dx.nocs.filter(n => n.id !== itemId);
+        renderPlanoMontado();
+        // Atualiza check no painel NIC/NOC se o dx em foco
+        if (state.focusDx === dxCodigo) {
+            document.querySelectorAll(`#nic-noc-panel .tag-item[data-id="${itemId}"]`)
+                .forEach(t => t.classList.remove('checked'));
+        }
+        autoSavePlano();
+    };
+
+    // Search
+    document.getElementById('dx-search').addEventListener('input', e => {
+        renderNandaList(e.target.value);
+    });
+
+    // Auto-save plano
     let planoTimer = null;
     async function autoSavePlano() {
-        if (!state.consultaId || !state.nandaSelectedCodigo) return;
+        if (!state.consultaId || !state.plano.length) return;
         clearTimeout(planoTimer);
         planoTimer = setTimeout(async () => {
             try {
+                // Monta payload com todos os diagnósticos
+                const diagnosticos = state.plano.map((dx, i) => ({
+                    codigo_nanda: dx.codigo, prioridade: i + 1, origem: 'selecionado'
+                }));
+                const intervencoes = state.plano.flatMap(dx =>
+                    dx.nics.map(n => ({ codigo_nic: n.codigo }))
+                );
+                const resultados_esperados = state.plano.flatMap(dx =>
+                    dx.nocs.map(n => ({ codigo_noc: n.codigo }))
+                );
                 await api('PUT', `/consultas/${state.consultaId}/plano`, {
-                    diagnosticos: [{ codigo_nanda: state.nandaSelectedCodigo, prioridade: 1, origem: 'selecionado' }],
-                    intervencoes: state.selectedNicNoc.filter(x => x.tipo === 'nic').map(x => ({ codigo_nic: x.codigo })),
-                    resultados_esperados: state.selectedNicNoc.filter(x => x.tipo === 'noc').map(x => ({ codigo_noc: x.codigo })),
+                    diagnosticos, intervencoes, resultados_esperados
                 });
-            } catch {}
+            } catch(err) { console.warn('[autoSavePlano]', err.message); }
         }, 1500);
     }
 
-    // ── ABA 4: SEGUIMENTO ──
+    // Expõe globalmente
+    window.loadNanda = loadNanda;
+    window.activateModule = activateModule;
+
+        // ── ABA 4: SEGUIMENTO ──
     async function buildFollowupPanel() {
         const panel = document.getElementById('followup-actions-panel');
-        let items = state.selectedNicNoc;
+
+        // Collect all NIC/NOC from multi-diagnosis plan
+        let items = [];
+        if (state.plano && state.plano.length) {
+            state.plano.forEach(dx => {
+                dx.nics.forEach(n => items.push({ id: n.id, tipo: 'nic', texto: n.nome, dx: dx.titulo }));
+                dx.nocs.forEach(n => items.push({ id: n.id, tipo: 'noc', texto: n.nome, dx: dx.titulo }));
+            });
+        }
+
+        // Fallback to API if state.plano is empty
         if (!items.length && state.consultaId) {
             try {
                 const plano = await api('GET', `/consultas/${state.consultaId}/plano`);
                 items = [
-                    ...plano.intervencoes.map(i => ({ id: i.nic_id_lc, tipo: 'nic', texto: i.nome_intervencao })),
-                    ...plano.resultados_esperados.map(r => ({ id: r.noc_id_lc, tipo: 'noc', texto: r.nome_resultado })),
+                    ...plano.intervencoes.map(i => ({ id: `nic_${i.codigo_nic}`, tipo: 'nic', texto: i.nome_intervencao || `NIC ${i.codigo_nic}` })),
+                    ...plano.resultados_esperados.map(r => ({ id: `noc_${r.codigo_noc}`, tipo: 'noc', texto: r.nome_resultado || `NOC ${r.codigo_noc}` })),
                 ];
             } catch {}
         }
-        if (!items.length) { panel.innerHTML = '<div class="empty-state-sm">Complete o Plano SAE para carregar as metas aqui.</div>'; return; }
+
+        if (!items.length) {
+            panel.innerHTML = '<div class="empty-state-sm">Complete o Plano SAE para carregar as metas aqui.</div>';
+            return;
+        }
+
         panel.innerHTML = items.map(item => `
             <div class="followup-item">
                 <span class="followup-badge ${item.tipo}">${item.tipo.toUpperCase()}</span>
-                <span class="followup-text">${item.texto}</span>
+                <span class="followup-text">${item.texto}${item.dx ? ` <span style="color:var(--text-light);font-size:0.7rem">(${item.dx})</span>` : ''}</span>
                 <select class="followup-select efetividade-select" data-id="${item.id}">
                     <option value="">Status...</option>
                     <option value="resolvido">Resolvido ✓</option>
@@ -603,6 +803,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const temp = document.getElementById('ef-temp')?.value || '';
         const sato2 = document.getElementById('ef-sato2')?.value || '';
 
+        // Build SAE section from multi-diagnosis plan
+        const saePlan = (state.plano || []);
+        const saeText = saePlan.length
+            ? saePlan.map(dx => {
+                const nics = dx.nics.map(n => `     ▸ [NIC] ${n.nome}`).join('\n');
+                const nocs = dx.nocs.map(n => `     ▸ [NOC] ${n.nome}`).join('\n');
+                return `▸ ${dx.titulo} [${dx.codigo}]\n${nics}${nics && nocs ? '\n' : ''}${nocs}`;
+              }).join('\n\n')
+            : 'Nenhum diagnóstico selecionado.';
+
         const plainText = `[GUIDENURSE ONCOLOGY — CONSULTA DE ENFERMAGEM ONCOLÓGICA]
 Data/Hora: ${new Date().toLocaleString('pt-BR')}
 Enfermeiro(a): ${enfermeiro}
@@ -621,9 +831,8 @@ PA: ${pa} | Temp: ${temp}°C | SatO2: ${sato2}%
 Risco Estratificado: ${riskLabels[state.riskLevel]}
 ${sympsArr.length ? sympsArr.map(s => '▸ '+s).join('\n') : 'Sem toxicidade relatada.'}
 
-[PLANO DE CUIDADO SAE]
-Diagnóstico Principal: ${state.nandaSelectedTitle || 'Não avaliado'}
-${state.selectedNicNoc.map(n => `▸ [${n.tipo.toUpperCase()}] ${n.texto}`).join('\n') || 'Nenhuma intervenção selecionada.'}
+[PLANO DE CUIDADO SAE — ${saePlan.length} diagnóstico(s)]
+${saeText}
 
 [CONDUTA DE SEGUIMENTO]
 ${conduta || 'Apenas registro assistencial.'}
@@ -636,8 +845,12 @@ ${followupData ? 'Agendado para: '+new Date(followupData).toLocaleString('pt-BR'
             <strong>Enfermeiro(a):</strong> ${enfermeiro}<br><br>
             <strong>Sintomas:</strong><br>
             ${sympsArr.length ? sympsArr.map(s=>`<span style="display:block;margin-left:8px">▸ ${s}</span>`).join('') : '<em>Nenhum</em>'}<br>
-            <strong>Diagnóstico:</strong> ${state.nandaSelectedTitle || '—'}<br>
-            ${state.selectedNicNoc.map(n=>`<span style="display:block;margin-left:8px">▸ [${n.tipo.toUpperCase()}] ${n.texto}</span>`).join('')}
+            <strong>Plano SAE (${saePlan.length} diagnóstico(s)):</strong><br>
+            ${saePlan.map(dx => `
+                <span style="display:block;margin-left:4px;margin-top:6px;font-weight:600;color:#175C9D">▸ ${dx.titulo}</span>
+                ${dx.nics.map(n=>`<span style="display:block;margin-left:16px;font-size:0.78rem">NIC: ${n.nome}</span>`).join('')}
+                ${dx.nocs.map(n=>`<span style="display:block;margin-left:16px;font-size:0.78rem;color:#1a6b42">NOC: ${n.nome}</span>`).join('')}
+            `).join('') || '<em>Nenhum diagnóstico</em>'}
             <br><strong>Conduta:</strong> ${conduta || 'Registro assistencial'}`;
 
         document.getElementById('summary-visual-preview').innerHTML = visualHtml;
