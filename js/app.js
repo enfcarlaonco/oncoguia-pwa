@@ -449,9 +449,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const uid = `nic_${i.codigo_nic}`;
                 const checked = selectedNics.includes(uid) ? ' checked' : '';
                 const texto = (i.nome_intervencao||'').replace(/"/g,'&quot;');
+                // orientações vindas da tabela intervencoes_nic
+                const orientPac = (i.orientacao_paciente || i.orientacao_paciente_sugerida || '').trim();
+                const orientEnf = (i.orientacao_enfermagem || i.atividades_profissionais || '').trim();
+                const orientPacData = orientPac.replace(/"/g,'&quot;');
+                const orientEnfData = orientEnf.replace(/"/g,'&quot;');
                 return `<div class="tag-item nic${checked}" data-id="${uid}" data-tipo="nic"
-                             data-codigo="${i.codigo_nic}" data-texto="${texto}">
+                             data-codigo="${i.codigo_nic}" data-texto="${texto}"
+                             data-orient-pac="${orientPacData}"
+                             data-orient-enf="${orientEnfData}">
                     ${i.nome_intervencao}<span class="tag-check">✓</span>
+                    ${orientPac ? `<span class="tag-has-orient" title="Tem orientações ao paciente">📋</span>` : ''}
                 </div>`;
             }).join('') || '<div class="loading-state">Nenhuma intervenção cadastrada.</div>';
 
@@ -498,7 +506,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dxTitulo = e.currentTarget.dataset.titulo;
 
                 const nicsSelected = [...panel.querySelectorAll('.tag-item.nic.checked')].map(t => ({
-                    id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto
+                    id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto,
+                    orientacao_paciente: t.dataset.orientPac || '',
+                    orientacao_enfermagem: t.dataset.orientEnf || ''
                 }));
                 const nocsSelected = [...panel.querySelectorAll('.tag-item.noc.checked')].map(t => ({
                     id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto
@@ -563,8 +573,28 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="plano-item nic">
                             <span class="plano-item-badge">NIC</span>
                             <span class="plano-item-text">${n.nome}</span>
-                            <button class="plano-item-remove" onclick="removeItemFromPlan('${dx.codigo}','nic','${n.id}')" title="Remover">✕</button>
-                        </div>`).join('')}
+                            <div style="display:flex;gap:4px;flex-shrink:0">
+                                ${n.orientacao_paciente ? `<button class="btn-ver-orient" onclick="verOrientacao(event,'${n.id}')" title="Ver orientações ao paciente">📋</button>` : ''}
+                                <button class="plano-item-remove" onclick="removeItemFromPlan('${dx.codigo}','nic','${n.id}')" title="Remover">✕</button>
+                            </div>
+                        </div>
+                        ${n.orientacao_paciente ? `<div class="orient-block" id="orient-${n.id}" style="display:none">
+                            <div class="orient-section">
+                                <div class="orient-label">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    Orientação ao Paciente e Familiar
+                                </div>
+                                <div class="orient-text">${(n.orientacao_paciente||'').replace(/\n/g,'<br>')}</div>
+                            </div>
+                            ${n.orientacao_enfermagem ? `<div class="orient-section enf">
+                                <div class="orient-label">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                                    Orientação para a Enfermagem
+                                </div>
+                                <div class="orient-text">${(n.orientacao_enfermagem||'').replace(/\n/g,'<br>')}</div>
+                            </div>` : ''}
+                        </div>` : ''}
+                        `).join('')}
                     ${dx.nocs.map(n => `
                         <div class="plano-item noc">
                             <span class="plano-item-badge">NOC</span>
@@ -643,6 +673,16 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch(err) { console.warn('[autoSavePlano]', err.message); }
         }, 1500);
     }
+
+    // Ver/ocultar orientações
+    window.verOrientacao = function(e, nicId) {
+        e.stopPropagation();
+        const block = document.getElementById(`orient-${nicId}`);
+        if (!block) return;
+        const isVisible = block.style.display !== 'none';
+        block.style.display = isVisible ? 'none' : 'block';
+        e.currentTarget.style.opacity = isVisible ? '1' : '0.5';
+    };
 
     // Expõe globalmente
     window.loadNanda = loadNanda;
