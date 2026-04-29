@@ -578,8 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const planNic   = planDx?.nics.find(n => n.id === nicId);
             const selected  = planNic ? (planNic[type] || []) : [];
 
-            return text.split('
-')
+            return text.split('\n')
                 .map(line => line.trim())
                 .filter(line => line.length > 0)
                 .map((line, idx) => {
