@@ -462,11 +462,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const focused = state.focusNic === uid ? ' focused' : '';
                 const texto   = (i.nome_intervencao||'').replace(/"/g,'&quot;');
                 const orientPac = (i.orientacao_paciente || i.orientacao_paciente_sugerida || '').trim();
-                const hasOrient = orientPac.length > 0;
+                const orientEnf = (i.orientacao_enfermagem || i.contexto_uso || i.atividades_profissionais || '').trim();
+                const hasOrient = orientPac.length > 0 || orientEnf.length > 0;
+                if (hasOrient) console.log('[ORIENT]', i.nome_intervencao, orientPac.substring(0,80));
+                // Encode newlines to survive HTML attribute
+                const orientPacEnc = orientPac.replace(/\n/g,'|||').replace(/"/g,'&quot;');
+                const orientEnfEnc = orientEnf.replace(/\n/g,'|||').replace(/"/g,'&quot;');
                 return `<div class="tag-item nic${checked}${focused}" data-id="${uid}" data-tipo="nic"
                              data-codigo="${i.codigo_nic}" data-texto="${texto}"
-                             data-orient-pac="${(i.orientacao_paciente||'').replace(/"/g,'&quot;')}"
-                             data-orient-enf="${(i.orientacao_enfermagem || i.contexto_uso || '').replace(/"/g,'&quot;')}"
+                             data-orient-pac="${orientPacEnc}"
+                             data-orient-enf="${orientEnfEnc}"
                              data-has-orient="${hasOrient}">
                     ${i.nome_intervencao}
                     ${hasOrient ? '<span style="font-size:0.65rem;opacity:0.6;margin-left:4px">📋</span>' : ''}
@@ -515,8 +520,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Renderiza painel de orientações
                     renderOrientPanel(
                         tag.dataset.texto,
-                        tag.dataset.orientPac || '',
-                        tag.dataset.orientEnf || '',
+                        (tag.dataset.orientPac || '').replace(/\|\|\|/g,'\n'),
+                        (tag.dataset.orientEnf || '').replace(/\|\|\|/g,'\n'),
                         tag.dataset.id,
                         tag.classList.contains('checked')
                     );
@@ -578,7 +583,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const planNic   = planDx?.nics.find(n => n.id === nicId);
             const selected  = planNic ? (planNic[type] || []) : [];
 
-            return text.split('\n')
+            return text.replace(/\|\|\|/g,'\n').split('\n')
                 .map(line => line.trim())
                 .filter(line => line.length > 0)
                 .map((line, idx) => {
