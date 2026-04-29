@@ -367,14 +367,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1500);
     }
 
-    // ── ABA 3: PLANO SAE — MÚLTIPLOS DIAGNÓSTICOS ──
+    // ══════════════════════════════════════════════════════════════
+    // ABA 3: PLANO SAE — 4 PAINÉIS
+    // Painel 1: NANDA  |  Painel 2: NIC/NOC  |  Painel 3: Orientações  |  Painel 4: Plano
+    // ══════════════════════════════════════════════════════════════
 
-    // Estado do plano — suporta N diagnósticos
-    // state.plano = [ { codigo, titulo, enunciado, nics: [{id,codigo,nome}], nocs: [{id,codigo,nome}] }, ... ]
-    state.plano = [];
-    state.focusDx = null; // diagnóstico em foco no painel NIC/NOC
+    state.plano      = [];   // [{codigo, titulo, enunciado, nics:[{id,codigo,nome,orientPac,orientFam,orientEnf}], nocs:[{id,codigo,nome}]}]
+    state.focusDx    = null; // diagnóstico em foco no painel 2
+    state.focusNic   = null; // NIC em foco no painel 3
 
-    // Carrega diagnósticos
+    // ── Painel 1: Carregar e renderizar diagnósticos ──
     async function loadNanda(filter) {
         filter = filter || '';
         const list = document.getElementById('dx-list');
@@ -385,8 +387,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('[NANDA] carregados:', result.length);
                 state.nandaCache = result;
             } catch(err) {
-                console.error('[NANDA] erro:', err);
-                list.innerHTML = `<div class="loading-state" style="color:#DC2626">Erro ao carregar. <button onclick="window.loadNanda()" style="color:#175C9D;background:none;border:none;cursor:pointer;text-decoration:underline">Tentar novamente</button></div>`;
+                list.innerHTML = `<div class="loading-state" style="color:#DC2626">Erro ao carregar.
+                    <button onclick="window.loadNanda()" style="color:#175C9D;background:none;border:none;cursor:pointer;text-decoration:underline">Tentar novamente</button></div>`;
                 return;
             }
         }
@@ -400,73 +402,82 @@ document.addEventListener('DOMContentLoaded', () => {
             dx.titulo_diagnostico.toLowerCase().includes(filter.toLowerCase()) ||
             dx.codigo_nanda.includes(filter)
         );
-        if (!filtered.length) {
-            list.innerHTML = '<div class="loading-state">Nenhum diagnóstico encontrado.</div>';
-            return;
-        }
+        if (!filtered.length) { list.innerHTML = '<div class="loading-state">Nenhum diagnóstico encontrado.</div>'; return; }
+
         list.innerHTML = filtered.map(dx => {
-            const inPlan = state.plano.find(p => p.codigo === dx.codigo_nanda);
+            const inPlan  = state.plano.find(p => p.codigo === dx.codigo_nanda);
             const focused = state.focusDx === dx.codigo_nanda;
             return `<div class="dx-card${focused ? ' focused' : ''}${inPlan ? ' in-plan' : ''}"
-                         data-codigo="${dx.codigo_nanda}" data-titulo="${dx.titulo_diagnostico.replace(/"/g,'&quot;')}">
+                         data-codigo="${dx.codigo_nanda}"
+                         data-titulo="${dx.titulo_diagnostico.replace(/"/g,'&quot;')}">
                 <div class="dx-title">${dx.titulo_diagnostico}</div>
-                <div class="dx-code">[${dx.codigo_nanda}]</div>
+                <div class="dx-code">[${dx.codigo_nanda}] · ${dx.dominio || ''}</div>
             </div>`;
         }).join('');
 
         list.querySelectorAll('.dx-card').forEach(card => {
             card.addEventListener('click', () => {
-                state.focusDx = card.dataset.codigo;
+                state.focusDx  = card.dataset.codigo;
+                state.focusNic = null;
                 renderNandaList(document.getElementById('dx-search')?.value || '');
                 loadNicNoc(card.dataset.codigo, card.dataset.titulo);
+                // Limpa painel orientações ao trocar de diagnóstico
+                document.getElementById('orient-panel').innerHTML = `<div class="empty-panel">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <p>Selecione uma intervenção NIC para ver as orientações</p>
+                </div>`;
             });
         });
+
+        // Atualizar badge contador
+        const badge = document.getElementById('dx-count-badge');
+        if (badge) {
+            badge.textContent = state.plano.length;
+            badge.className   = 'card-badge' + (state.plano.length > 0 ? ' has-items' : '');
+        }
     }
 
-    // Carrega NIC/NOC para um diagnóstico
+    // ── Painel 2: Carregar NIC/NOC ──
     async function loadNicNoc(codigo, titulo) {
-        const panel = document.getElementById('nic-noc-panel');
+        const panel   = document.getElementById('nic-noc-panel');
         const titleEl = document.getElementById('nicnoc-title');
-        if (titleEl) titleEl.textContent = titulo || 'Intervenções e Resultados';
-
-        panel.innerHTML = '<div class="loading-state" style="padding:24px">Carregando intervenções...</div>';
+        if (titleEl) titleEl.textContent = titulo || 'NIC e NOC';
+        panel.innerHTML = '<div class="loading-state" style="padding:16px">Carregando...</div>';
 
         try {
             const data = await api('GET', `/referencia/nanda/${codigo}/sugestoes`);
             const intervencoes_nic = data.intervencoes_nic || [];
             const resultados_noc   = data.resultados_noc   || [];
 
-            // Diagnóstico já está no plano?
-            const planDx = state.plano.find(p => p.codigo === codigo);
+            const planDx       = state.plano.find(p => p.codigo === codigo);
             const selectedNics = planDx ? planDx.nics.map(n => n.id) : [];
             const selectedNocs = planDx ? planDx.nocs.map(n => n.id) : [];
 
-            // Enunciado
-            const dxData = state.nandaCache.find(d => d.codigo_nanda === codigo);
+            const dxData   = state.nandaCache.find(d => d.codigo_nanda === codigo);
             const enunciado = dxData?.enunciado_pes || '';
 
             const nicHtml = intervencoes_nic.map(i => {
-                const uid = `nic_${i.codigo_nic}`;
+                const uid     = `nic_${i.codigo_nic}`;
                 const checked = selectedNics.includes(uid) ? ' checked' : '';
-                const texto = (i.nome_intervencao||'').replace(/"/g,'&quot;');
-                // orientações vindas da tabela intervencoes_nic
+                const focused = state.focusNic === uid ? ' focused' : '';
+                const texto   = (i.nome_intervencao||'').replace(/"/g,'&quot;');
                 const orientPac = (i.orientacao_paciente || i.orientacao_paciente_sugerida || '').trim();
-                const orientEnf = (i.orientacao_enfermagem || i.atividades_profissionais || '').trim();
-                const orientPacData = orientPac.replace(/"/g,'&quot;');
-                const orientEnfData = orientEnf.replace(/"/g,'&quot;');
-                return `<div class="tag-item nic${checked}" data-id="${uid}" data-tipo="nic"
+                const hasOrient = orientPac.length > 0;
+                return `<div class="tag-item nic${checked}${focused}" data-id="${uid}" data-tipo="nic"
                              data-codigo="${i.codigo_nic}" data-texto="${texto}"
-                             data-orient-pac="${orientPacData}"
-                             data-orient-enf="${orientEnfData}">
-                    ${i.nome_intervencao}<span class="tag-check">✓</span>
-                    ${orientPac ? `<span class="tag-has-orient" title="Tem orientações ao paciente">📋</span>` : ''}
+                             data-orient-pac="${(i.orientacao_paciente||'').replace(/"/g,'&quot;')}"
+                             data-orient-enf="${(i.orientacao_enfermagem || i.contexto_uso || '').replace(/"/g,'&quot;')}"
+                             data-has-orient="${hasOrient}">
+                    ${i.nome_intervencao}
+                    ${hasOrient ? '<span style="font-size:0.65rem;opacity:0.6;margin-left:4px">📋</span>' : ''}
+                    <span class="tag-check">✓</span>
                 </div>`;
             }).join('') || '<div class="loading-state">Nenhuma intervenção cadastrada.</div>';
 
             const nocHtml = resultados_noc.map(r => {
-                const uid = `noc_${r.codigo_noc}`;
+                const uid     = `noc_${r.codigo_noc}`;
                 const checked = selectedNocs.includes(uid) ? ' checked' : '';
-                const texto = (r.nome_resultado||'').replace(/"/g,'&quot;');
+                const texto   = (r.nome_resultado||'').replace(/"/g,'&quot;');
                 return `<div class="tag-item noc${checked}" data-id="${uid}" data-tipo="noc"
                              data-codigo="${r.codigo_noc}" data-texto="${texto}">
                     ${r.nome_resultado}<span class="tag-check">✓</span>
@@ -476,53 +487,66 @@ document.addEventListener('DOMContentLoaded', () => {
             panel.innerHTML = `
                 <div class="nicnoc-dx-header">
                     <div class="dx-name">${titulo}</div>
-                    ${enunciado ? `<div class="dx-enunciado">${enunciado.replace('Enunciado PES:','').replace('Enunciado PE (Diagnóstico de Risco):','').trim()}</div>` : ''}
+                    ${enunciado ? `<div class="dx-enunciado">${enunciado.replace(/Enunciado P[EPS]+\s*\(.*?\)\s*:/g,'').replace(/Enunciado PES:/g,'').trim()}</div>` : ''}
                 </div>
                 <div class="nic-noc-section-title nic-title">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg>
                     Intervenções NIC
                 </div>
                 <div class="tag-row" id="nic-tags">${nicHtml}</div>
-                <div class="nic-noc-section-title noc-title" style="margin-top:14px">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                <div class="nic-noc-section-title noc-title" style="margin-top:12px">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
                     Resultados NOC
                 </div>
                 <div class="tag-row" id="noc-tags">${nocHtml}</div>
-                <button class="btn-add-dx-plan" id="btn-add-dx-plan" data-codigo="${codigo}" data-titulo="${(titulo||'').replace(/"/g,'&quot;')}">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <button class="btn-add-dx-plan" id="btn-add-dx-plan" data-codigo="${codigo}" data-titulo="${(titulo||'').replace(/"/g,'&quot;')}" data-enunciado="${enunciado.replace(/"/g,'&quot;')}">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     ${planDx ? 'Atualizar no Plano' : 'Adicionar ao Plano'}
                 </button>`;
 
-            // Toggle tags
-            panel.querySelectorAll('.tag-item').forEach(tag => {
+            // Clique em NIC → abre painel 3 com orientações
+            panel.querySelectorAll('.tag-item.nic').forEach(tag => {
                 tag.addEventListener('click', () => {
                     tag.classList.toggle('checked');
+                    state.focusNic = tag.dataset.id;
+                    // Atualiza foco visual
+                    panel.querySelectorAll('.tag-item.nic').forEach(t => t.classList.remove('focused'));
+                    tag.classList.add('focused');
+                    // Renderiza painel de orientações
+                    renderOrientPanel(
+                        tag.dataset.texto,
+                        tag.dataset.orientPac || '',
+                        tag.dataset.orientEnf || '',
+                        tag.dataset.id,
+                        tag.classList.contains('checked')
+                    );
                 });
             });
 
-            // Botão adicionar/atualizar ao plano
+            // Clique em NOC apenas marca/desmarca
+            panel.querySelectorAll('.tag-item.noc').forEach(tag => {
+                tag.addEventListener('click', () => tag.classList.toggle('checked'));
+            });
+
+            // Botão adicionar ao plano
             document.getElementById('btn-add-dx-plan').addEventListener('click', (e) => {
-                const dxCodigo = e.currentTarget.dataset.codigo;
-                const dxTitulo = e.currentTarget.dataset.titulo;
+                const dxCodigo  = e.currentTarget.dataset.codigo;
+                const dxTitulo  = e.currentTarget.dataset.titulo;
+                const dxEnunc   = e.currentTarget.dataset.enunciado;
 
                 const nicsSelected = [...panel.querySelectorAll('.tag-item.nic.checked')].map(t => ({
-                    id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto,
-                    orientacao_paciente: t.dataset.orientPac || '',
+                    id:                   t.dataset.id,
+                    codigo:               parseInt(t.dataset.codigo),
+                    nome:                 t.dataset.texto,
+                    orientacao_paciente:  t.dataset.orientPac || '',
                     orientacao_enfermagem: t.dataset.orientEnf || ''
                 }));
                 const nocsSelected = [...panel.querySelectorAll('.tag-item.noc.checked')].map(t => ({
                     id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto
                 }));
 
-                // Remove se já existe, depois readiciona
                 state.plano = state.plano.filter(p => p.codigo !== dxCodigo);
-                state.plano.push({
-                    codigo: dxCodigo,
-                    titulo: dxTitulo,
-                    enunciado: enunciado,
-                    nics: nicsSelected,
-                    nocs: nocsSelected
-                });
+                state.plano.push({ codigo: dxCodigo, titulo: dxTitulo, enunciado: dxEnunc, nics: nicsSelected, nocs: nocsSelected });
 
                 renderPlanoMontado();
                 renderNandaList(document.getElementById('dx-search')?.value || '');
@@ -531,70 +555,125 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch(err) {
             console.error('[NIC/NOC]', err);
-            panel.innerHTML = '<div class="loading-state" style="color:#DC2626">Erro ao carregar intervenções.</div>';
+            panel.innerHTML = '<div class="loading-state" style="color:#DC2626">Erro ao carregar.</div>';
         }
     }
 
-    // Renderiza o painel direito "Plano Montado"
-    function renderPlanoMontado() {
-        const el = document.getElementById('plano-montado');
-        const badge = document.getElementById('dx-count-badge');
+    // ── Painel 3: Orientações ao Paciente e Familiar ──
+    function renderOrientPanel(nomeNic, orientPac, orientEnf, nicId, isChecked) {
+        const panel = document.getElementById('orient-panel');
 
-        if (badge) {
-            badge.textContent = state.plano.length + ' selecionados';
-            badge.className = 'card-badge' + (state.plano.length > 0 ? ' has-items' : '');
-        }
-
-        if (!state.plano.length) {
-            el.innerHTML = `<div class="empty-panel" style="min-height:200px">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                <p>Selecione diagnósticos e intervenções para montar o plano</p>
+        if (!orientPac && !orientEnf) {
+            panel.innerHTML = `<div class="empty-panel">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/></svg>
+                <p style="font-size:0.78rem">Nenhuma orientação cadastrada para esta intervenção.</p>
             </div>`;
             return;
         }
 
+        // Divide orientações em linhas clicáveis
+        function buildOrientLines(text, type) {
+            if (!text) return '';
+            const planDx    = state.plano.find(p => p.codigo === state.focusDx);
+            const planNic   = planDx?.nics.find(n => n.id === nicId);
+            const selected  = planNic ? (planNic[type] || []) : [];
+
+            return text.split('
+')
+                .map(line => line.trim())
+                .filter(line => line.length > 0)
+                .map((line, idx) => {
+                    const lineId   = `${type}_${nicId}_${idx}`;
+                    const isActive = selected.includes(line);
+                    return `<div class="orient-line${isActive ? ' selected' : ''}"
+                                 data-type="${type}" data-nicid="${nicId}" data-line="${line.replace(/"/g,'&quot;')}" data-lineid="${lineId}">
+                        <span class="orient-line-check">${isActive ? '✓' : '+'}</span>
+                        <span class="orient-line-text">${line}</span>
+                    </div>`;
+                }).join('');
+        }
+
+        panel.innerHTML = `
+            <div class="orient-nic-header">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg>
+                NIC: ${nomeNic}
+            </div>
+            ${orientPac ? `
+            <div class="orient-section-header pac">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Orientação ao Paciente — clique para selecionar
+            </div>
+            <div class="orient-lines-group">${buildOrientLines(orientPac, 'orientacoes_paciente')}</div>
+            ` : ''}
+            ${orientEnf ? `
+            <div class="orient-section-header enf">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                Orientação de Enfermagem — clique para selecionar
+            </div>
+            <div class="orient-lines-group">${buildOrientLines(orientEnf, 'orientacoes_enfermagem')}</div>
+            ` : ''}
+        `;
+
+        // Toggle orientações individualmente
+        panel.querySelectorAll('.orient-line').forEach(line => {
+            line.addEventListener('click', () => {
+                const type    = line.dataset.type;
+                const lineText = line.dataset.line;
+                line.classList.toggle('selected');
+                const sel = line.classList.contains('selected');
+                line.querySelector('.orient-line-check').textContent = sel ? '✓' : '+';
+
+                // Salva no state.plano → NIC específico
+                const planDx = state.plano.find(p => p.codigo === state.focusDx);
+                if (!planDx) return;
+                const planNic = planDx.nics.find(n => n.id === nicId);
+                if (!planNic) return;
+                if (!planNic[type]) planNic[type] = [];
+                if (sel) {
+                    if (!planNic[type].includes(lineText)) planNic[type].push(lineText);
+                } else {
+                    planNic[type] = planNic[type].filter(l => l !== lineText);
+                }
+                renderPlanoMontado();
+            });
+        });
+    }
+
+    // ── Painel 4: Plano Montado ──
+    function renderPlanoMontado() {
+        const el    = document.getElementById('plano-montado');
+        const badge = document.getElementById('dx-count-badge');
+        if (badge) {
+            badge.textContent = state.plano.length;
+            badge.className   = 'card-badge' + (state.plano.length > 0 ? ' has-items' : '');
+        }
+
+        if (!state.plano.length) {
+            el.innerHTML = `<div class="empty-panel" style="min-height:160px">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>
+                <p>Plano aparece aqui</p></div>`;
+            return;
+        }
+
         el.innerHTML = state.plano.map((dx, idx) => `
-            <div class="plano-dx-block" data-idx="${idx}">
-                <div class="plano-dx-header" onclick="togglePlanoDx(${idx})">
+            <div class="plano-dx-block">
+                <div class="plano-dx-header">
                     <div>
                         <div class="plano-dx-name">${dx.titulo}</div>
                         <div class="plano-dx-code">[${dx.codigo}] · ${dx.nics.length} NIC · ${dx.nocs.length} NOC</div>
                     </div>
-                    <div class="plano-dx-actions">
-                        <button class="btn-remove-dx" onclick="event.stopPropagation(); removeDxFromPlan('${dx.codigo}')" title="Remover diagnóstico">✕</button>
-                    </div>
+                    <button class="btn-remove-dx" onclick="removeDxFromPlan('${dx.codigo}')" title="Remover">✕</button>
                 </div>
-                <div class="plano-dx-body" id="plano-body-${idx}">
-                    ${dx.nics.length === 0 && dx.nocs.length === 0
-                        ? '<div class="plano-empty-dx">Nenhuma intervenção selecionada</div>'
-                        : ''
-                    }
-                    ${dx.nics.map(n => `
-                        <div class="plano-item nic">
+                <div class="plano-dx-body">
+                    ${dx.nics.map(n => {
+                        const pac = (n.orientacoes_paciente  || []).length;
+                        const enf = (n.orientacoes_enfermagem || []).length;
+                        return `<div class="plano-item nic">
                             <span class="plano-item-badge">NIC</span>
-                            <span class="plano-item-text">${n.nome}</span>
-                            <div style="display:flex;gap:4px;flex-shrink:0">
-                                ${n.orientacao_paciente ? `<button class="btn-ver-orient" onclick="verOrientacao(event,'${n.id}')" title="Ver orientações ao paciente">📋</button>` : ''}
-                                <button class="plano-item-remove" onclick="removeItemFromPlan('${dx.codigo}','nic','${n.id}')" title="Remover">✕</button>
-                            </div>
-                        </div>
-                        ${n.orientacao_paciente ? `<div class="orient-block" id="orient-${n.id}" style="display:none">
-                            <div class="orient-section">
-                                <div class="orient-label">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                                    Orientação ao Paciente e Familiar
-                                </div>
-                                <div class="orient-text">${(n.orientacao_paciente||'').replace(/\n/g,'<br>')}</div>
-                            </div>
-                            ${n.orientacao_enfermagem ? `<div class="orient-section enf">
-                                <div class="orient-label">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                                    Orientação para a Enfermagem
-                                </div>
-                                <div class="orient-text">${(n.orientacao_enfermagem||'').replace(/\n/g,'<br>')}</div>
-                            </div>` : ''}
-                        </div>` : ''}
-                        `).join('')}
+                            <span class="plano-item-text">${n.nome}${pac||enf ? ` <span style="font-size:0.68rem;color:var(--green)">(${pac} orientações pac.)</span>` : ''}</span>
+                            <button class="plano-item-remove" onclick="removeItemFromPlan('${dx.codigo}','nic','${n.id}')" title="Remover">✕</button>
+                        </div>`;
+                    }).join('')}
                     ${dx.nocs.map(n => `
                         <div class="plano-item noc">
                             <span class="plano-item-badge">NOC</span>
@@ -602,90 +681,49 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button class="plano-item-remove" onclick="removeItemFromPlan('${dx.codigo}','noc','${n.id}')" title="Remover">✕</button>
                         </div>`).join('')}
                 </div>
-            </div>
-        `).join('');
+            </div>`).join('');
     }
 
-    // Toggle expand/collapse diagnóstico no plano
-    window.togglePlanoDx = function(idx) {
-        const body = document.getElementById(`plano-body-${idx}`);
-        if (body) body.style.display = body.style.display === 'none' ? 'flex' : 'none';
-    };
-
-    // Remove diagnóstico completo do plano
+    // Remoção
     window.removeDxFromPlan = function(codigo) {
         state.plano = state.plano.filter(p => p.codigo !== codigo);
         if (state.focusDx === codigo) {
             state.focusDx = null;
-            document.getElementById('nic-noc-panel').innerHTML = `
-                <div class="empty-panel">
-                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-                    <p>Clique em um diagnóstico para ver as Intervenções NIC e Resultados NOC sugeridos</p>
-                </div>`;
-            const titleEl = document.getElementById('nicnoc-title');
-            if (titleEl) titleEl.textContent = 'Intervenções e Resultados';
+            document.getElementById('nic-noc-panel').innerHTML = `<div class="empty-panel"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M9 11l3 3L22 4"/></svg><p>Clique em um diagnóstico</p></div>`;
+            document.getElementById('orient-panel').innerHTML  = `<div class="empty-panel"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><p>Selecione uma intervenção NIC</p></div>`;
         }
         renderPlanoMontado();
         renderNandaList(document.getElementById('dx-search')?.value || '');
         autoSavePlano();
     };
 
-    // Remove item NIC ou NOC individual do plano
     window.removeItemFromPlan = function(dxCodigo, tipo, itemId) {
         const dx = state.plano.find(p => p.codigo === dxCodigo);
         if (!dx) return;
         if (tipo === 'nic') dx.nics = dx.nics.filter(n => n.id !== itemId);
         if (tipo === 'noc') dx.nocs = dx.nocs.filter(n => n.id !== itemId);
         renderPlanoMontado();
-        // Atualiza check no painel NIC/NOC se o dx em foco
-        if (state.focusDx === dxCodigo) {
-            document.querySelectorAll(`#nic-noc-panel .tag-item[data-id="${itemId}"]`)
-                .forEach(t => t.classList.remove('checked'));
-        }
         autoSavePlano();
     };
 
-    // Search
-    document.getElementById('dx-search').addEventListener('input', e => {
-        renderNandaList(e.target.value);
-    });
+    document.getElementById('dx-search').addEventListener('input', e => renderNandaList(e.target.value));
 
-    // Auto-save plano
     let planoTimer = null;
     async function autoSavePlano() {
         if (!state.consultaId || !state.plano.length) return;
         clearTimeout(planoTimer);
         planoTimer = setTimeout(async () => {
             try {
-                // Monta payload com todos os diagnósticos
-                const diagnosticos = state.plano.map((dx, i) => ({
-                    codigo_nanda: dx.codigo, prioridade: i + 1, origem: 'selecionado'
-                }));
-                const intervencoes = state.plano.flatMap(dx =>
-                    dx.nics.map(n => ({ codigo_nic: n.codigo }))
-                );
-                const resultados_esperados = state.plano.flatMap(dx =>
-                    dx.nocs.map(n => ({ codigo_noc: n.codigo }))
-                );
                 await api('PUT', `/consultas/${state.consultaId}/plano`, {
-                    diagnosticos, intervencoes, resultados_esperados
+                    diagnosticos: state.plano.map((dx, i) => ({ codigo_nanda: dx.codigo, prioridade: i + 1, origem: 'selecionado' })),
+                    intervencoes: state.plano.flatMap(dx => dx.nics.map(n => ({ codigo_nic: n.codigo }))),
+                    resultados_esperados: state.plano.flatMap(dx => dx.nocs.map(n => ({ codigo_noc: n.codigo })))
                 });
             } catch(err) { console.warn('[autoSavePlano]', err.message); }
         }, 1500);
     }
 
-    // Ver/ocultar orientações
-    window.verOrientacao = function(e, nicId) {
-        e.stopPropagation();
-        const block = document.getElementById(`orient-${nicId}`);
-        if (!block) return;
-        const isVisible = block.style.display !== 'none';
-        block.style.display = isVisible ? 'none' : 'block';
-        e.currentTarget.style.opacity = isVisible ? '1' : '0.5';
-    };
-
-    // Expõe globalmente
-    window.loadNanda = loadNanda;
+    window.loadNanda      = loadNanda;
     window.activateModule = activateModule;
 
         // ── ABA 4: SEGUIMENTO ──
@@ -843,17 +881,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const temp = document.getElementById('ef-temp')?.value || '';
         const sato2 = document.getElementById('ef-sato2')?.value || '';
 
-        // Build SAE section from multi-diagnosis plan
+        // ── Monta texto do prontuário conforme modelo clínico ──
         const saePlan = (state.plano || []);
+
+        // Seção SAE
         const saeText = saePlan.length
             ? saePlan.map(dx => {
                 const nics = dx.nics.map(n => `     ▸ [NIC] ${n.nome}`).join('\n');
                 const nocs = dx.nocs.map(n => `     ▸ [NOC] ${n.nome}`).join('\n');
-                return `▸ ${dx.titulo} [${dx.codigo}]\n${nics}${nics && nocs ? '\n' : ''}${nocs}`;
+                return `▸ ${dx.titulo.toUpperCase()} [${dx.codigo}]\n${nics}${nics&&nocs?'\n':''}${nocs}`;
               }).join('\n\n')
             : 'Nenhum diagnóstico selecionado.';
 
-        const plainText = `[GUIDENURSE ONCOLOGY — CONSULTA DE ENFERMAGEM ONCOLÓGICA]
+        // Seção orientações ao paciente (todas as selecionadas, de todos os NICs)
+        const todasOrientPac = saePlan.flatMap(dx =>
+            dx.nics.flatMap(n => n.orientacoes_paciente || [])
+        ).filter(Boolean);
+
+        // Seção orientações ao familiar/enfermagem
+        const todasOrientEnf = saePlan.flatMap(dx =>
+            dx.nics.flatMap(n => n.orientacoes_enfermagem || [])
+        ).filter(Boolean);
+
+        const plainText =
+`CONSULTA DE ENFERMAGEM - GESTOR DO CUIDADO
 Data/Hora: ${new Date().toLocaleString('pt-BR')}
 Enfermeiro(a): ${enfermeiro}
 Tipo de Consulta: ${tipoConsulta}
@@ -876,9 +927,15 @@ ${saeText}
 
 [CONDUTA DE SEGUIMENTO]
 ${conduta || 'Apenas registro assistencial.'}
-${followupData ? 'Agendado para: '+new Date(followupData).toLocaleString('pt-BR') : ''}`;
+${followupData ? 'Agendado para: '+new Date(followupData).toLocaleString('pt-BR') : ''}${todasOrientPac.length ? `
 
-        const riskCls = state.riskLevel === 'alto' ? 'risk-label-high' : state.riskLevel === 'moderado' ? 'risk-label-mod' : 'risk-label-low';
+[ORIENTAÇÃO AO PACIENTE]
+${todasOrientPac.map(o => o.trim()).join('\n')}` : ''}${todasOrientEnf.length ? `
+
+[ORIENTAÇÃO AO ACOMPANHANTE / ENFERMAGEM]
+${todasOrientEnf.map(o => o.trim()).join('\n')}` : ''}`;
+
+                const riskCls = state.riskLevel === 'alto' ? 'risk-label-high' : state.riskLevel === 'moderado' ? 'risk-label-mod' : 'risk-label-low';
         const visualHtml = `
             <strong>Paciente:</strong> ${state.patient.initials} (${state.patient.reg})<br>
             <strong>Risco:</strong> <span class="${riskCls}">${riskLabels[state.riskLevel]}</span><br>

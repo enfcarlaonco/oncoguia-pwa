@@ -535,67 +535,83 @@
                 </div>
             </section>
 
-            <!-- ── MÓDULO 3: PLANO SAE — MÚLTIPLOS DIAGNÓSTICOS ── -->
+            <!-- ── MÓDULO 3: PLANO SAE — 4 PAINÉIS ── -->
             <section id="module-nanda" class="module">
 
-                <!-- PAINEL ESQUERDO: busca + lista de diagnósticos -->
                 <div class="sae-layout">
 
-                    <!-- Coluna 1: Busca e seleção de diagnósticos -->
-                    <div class="sae-col-left">
-                        <div class="card sae-search-card">
+                    <!-- PAINEL 1: Diagnósticos NANDA -->
+                    <div class="sae-col">
+                        <div class="card sae-card">
                             <div class="card-header">
-                                <span class="card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
-                                <h2 class="card-title">Diagnósticos NANDA</h2>
-                                <span class="card-badge" id="dx-count-badge">0 selecionados</span>
+                                <span class="card-icon blue"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
+                                <h2 class="card-title">Diagnóstico NANDA</h2>
+                                <span class="card-badge" id="dx-count-badge">0</span>
                             </div>
                             <div class="search-field">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                                <input type="text" id="dx-search" placeholder="Buscar diagnóstico NANDA...">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                                <input type="text" id="dx-search" placeholder="Buscar diagnóstico...">
                             </div>
                             <div class="dx-list" id="dx-list">
-                                <div class="loading-state">Carregando diagnósticos...</div>
+                                <div class="loading-state">Carregando...</div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Coluna 2: NIC/NOC do diagnóstico em foco -->
-                    <div class="sae-col-mid">
-                        <div class="card sae-nicnoc-card">
+                    <!-- PAINEL 2: NIC e NOC -->
+                    <div class="sae-col">
+                        <div class="card sae-card">
                             <div class="card-header">
-                                <span class="card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/><polyline points="15 18 21 12 15 6"/></svg></span>
-                                <h2 class="card-title" id="nicnoc-title">Intervenções e Resultados</h2>
+                                <span class="card-icon blue"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/><polyline points="15 18 21 12 15 6"/></svg></span>
+                                <h2 class="card-title" id="nicnoc-title">NIC e NOC</h2>
                             </div>
                             <div id="nic-noc-panel">
                                 <div class="empty-panel">
-                                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-                                    <p>Clique em um diagnóstico para ver as Intervenções NIC e Resultados NOC sugeridos</p>
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M9 11l3 3L22 4"/></svg>
+                                    <p>Clique em um diagnóstico</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Coluna 3: Plano montado -->
-                    <div class="sae-col-right">
-                        <div class="card sae-plano-card">
+                    <!-- PAINEL 3: Orientações ao Paciente e Familiar -->
+                    <div class="sae-col">
+                        <div class="card sae-card">
                             <div class="card-header">
-                                <span class="card-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
-                                <h2 class="card-title">Plano de Cuidado Montado</h2>
+                                <span class="card-icon green"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+                                <h2 class="card-title">Orientações ao Paciente</h2>
                             </div>
-                            <div id="plano-montado">
-                                <div class="empty-panel" style="min-height:200px">
-                                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                    <p>Selecione diagnósticos e intervenções para montar o plano</p>
+                            <div id="orient-panel">
+                                <div class="empty-panel">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    <p>Selecione uma intervenção NIC</p>
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- PAINEL 4: Plano Montado -->
+                    <div class="sae-col">
+                        <div class="card sae-card">
+                            <div class="card-header">
+                                <span class="card-icon green"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></span>
+                                <h2 class="card-title">Plano Montado</h2>
+                            </div>
+                            <div id="plano-montado">
+                                <div class="empty-panel" style="min-height:160px">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>
+                                    <p>Plano aparece aqui</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Conduta de Seguimento -->
                 <div class="card mt-16">
                     <div class="card-header">
-                        <span class="card-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0"/><polyline points="12 8 12 12 14 14"/></svg></span>
+                        <span class="card-icon green"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0"/><polyline points="12 8 12 12 14 14"/></svg></span>
                         <h2 class="card-title">Conduta de Seguimento Definida</h2>
                     </div>
                     <div class="form-grid-2">
@@ -603,20 +619,20 @@
                             <label>Conduta</label>
                             <select id="followup-conduta" class="select-field">
                                 <option value="">Selecione...</option>
-                                <option value="padrao">Seguimento padrão – contato telefônico</option>
-                                <option value="reforcado_24h">Seguimento reforçado – contato telefônico em 24h</option>
-                                <option value="intensivo_24h">Seguimento intensivo – contato em 24h + presencial no próximo ciclo</option>
-                                <option value="encaminhamento_medico">Encaminhamento imediato para avaliação médica</option>
-                                <option value="servico_saude">Orientação para procurar serviço de saúde</option>
-                                <option value="pa_hc">Orientação para procurar PA-HC</option>
-                                <option value="agendar_consulta">Agendar consulta de enfermagem</option>
+                                <option value="Seguimento padrão – contato telefônico">Seguimento padrão – contato telefônico</option>
+                                <option value="Seguimento reforçado – contato telefônico em 24h">Seguimento reforçado – contato em 24h</option>
+                                <option value="Seguimento intensivo – contato em 24h + presencial">Seguimento intensivo – 24h + presencial</option>
+                                <option value="Encaminhamento imediato para avaliação médica">Encaminhamento imediato médico</option>
+                                <option value="Orientação para procurar serviço de saúde">Procurar serviço de saúde</option>
+                                <option value="Orientação para procurar PA-HC">Procurar PA-HC</option>
+                                <option value="Agendar consulta de enfermagem">Agendar consulta de enfermagem</option>
                             </select>
                         </div>
                         <div class="field-group">
                             <label>Modalidade</label>
                             <select id="followup-modalidade" class="select-field">
-                                <option value="telefonico">Telefônico</option>
-                                <option value="presencial">Presencial</option>
+                                <option value="Telefônico">Telefônico</option>
+                                <option value="Presencial">Presencial</option>
                             </select>
                         </div>
                         <div class="field-group">
@@ -625,8 +641,8 @@
                         </div>
                     </div>
                     <div class="info-box mt-16">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                        O seguimento será agendado automaticamente na aba Tarefas conforme a conduta selecionada.
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        O seguimento será agendado automaticamente na aba Tarefas.
                     </div>
                 </div>
 
