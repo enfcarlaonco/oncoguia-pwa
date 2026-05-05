@@ -462,7 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const focused = state.focusNic === uid ? ' focused' : '';
                 const texto   = (i.nome_intervencao||'').replace(/"/g,'&quot;');
                 const orientPac = (i.orientacao_paciente || i.orientacao_paciente_sugerida || '').trim();
-                const orientEnf = (i.orientacao_enfermagem || i.contexto_uso || i.atividades_profissionais || '').trim();
+                const orientEnf = (i.contexto_uso || '').trim(); // col F = família/cuidador
                 const hasOrient = orientPac.length > 0 || orientEnf.length > 0;
                 if (hasOrient) console.log('[ORIENT]', i.nome_intervencao, orientPac.substring(0,80));
                 // Encode newlines to survive HTML attribute
@@ -518,13 +518,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     panel.querySelectorAll('.tag-item.nic').forEach(t => t.classList.remove('focused'));
                     tag.classList.add('focused');
                     // Renderiza painel de orientações
-                    renderOrientPanel(
-                        tag.dataset.texto,
-                        (tag.dataset.orientPac || '').replace(/\|\|\|/g,'\n'),
-                        (tag.dataset.orientEnf || '').replace(/\|\|\|/g,'\n'),
-                        tag.dataset.id,
-                        tag.classList.contains('checked')
-                    );
+                    const _pac = (tag.dataset.orientPac||'').replace(/\|\|\|/g,'\n');
+                    const _fam = (tag.dataset.orientEnf||'').replace(/\|\|\|/g,'\n');
+                    renderOrientPanel(tag.dataset.texto, _pac, _fam, tag.dataset.id, tag.classList.contains('checked'));
                 });
             });
 
@@ -543,8 +539,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     id:                   t.dataset.id,
                     codigo:               parseInt(t.dataset.codigo),
                     nome:                 t.dataset.texto,
-                    orientacao_paciente:  t.dataset.orientPac || '',
-                    orientacao_familia:    t.dataset.orientEnf || ''
+                    orientacoes_paciente:  [],
+                    orientacoes_familia:   [],
+                    _orientPacBase: (t.dataset.orientPac||'').replace(/\|\|\|/g,'\n'),
+                    _orientFamBase: (t.dataset.orientEnf||'').replace(/\|\|\|/g,'\n')
                 }));
                 const nocsSelected = [...panel.querySelectorAll('.tag-item.noc.checked')].map(t => ({
                     id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto
@@ -579,9 +577,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Divide orientações em linhas clicáveis
         function buildOrientLines(text, type) {
             if (!text) return '';
-            const planDx    = state.plano.find(p => p.codigo === state.focusDx);
-            const planNic   = planDx?.nics.find(n => n.id === nicId);
-            const selected  = planNic ? (planNic[type] || []) : [];
+            const planDx  = state.plano.find(p => p.codigo === state.focusDx);
+            const planNic = planDx?.nics.find(n => n.id === nicId);
+            const selected = planNic ? (planNic[type] || []) : [];
 
             return text.replace(/\|\|\|/g,'\n').split('\n')
                 .map(line => line.trim())
@@ -638,6 +636,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     planNic[type] = planNic[type].filter(l => l !== lineText);
                 }
+                console.log('[ORIENT SELECIONADA]', type, planNic[type]);
                 renderPlanoMontado();
             });
         });
@@ -900,7 +899,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Seção orientações ao paciente (todas as selecionadas, de todos os NICs)
         const todasOrientPac = saePlan.flatMap(dx =>
             dx.nics.flatMap(n => n.orientacoes_paciente || [])
-        ).filter(Boolean);
+        ).filter(o => o && o.trim());
 
         // Seção orientações ao familiar/enfermagem
         const todasOrientEnf = saePlan.flatMap(dx =>
