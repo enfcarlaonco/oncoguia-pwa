@@ -1350,3 +1350,22 @@ body {
 /* Responsive */
 @media (max-width: 1400px) { .sae-layout { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 768px)  { .sae-layout { grid-template-columns: 1fr; } }
+
+/* Família/cuidador — cor diferenciada (laranja) */
+.orient-section-header.fam { color: #d97706; }
+
+/* Seção família — laranja suave */
+.orient-section-header.fam {
+    color: #b45309;
+}
+.orient-section-header.fam + .orient-lines-group .orient-line:hover {
+    border-color: #f59e0b;
+    background: rgba(245,158,11,0.06);
+}
+.orient-section-header.fam + .orient-lines-group .orient-line.selected {
+    border-color: #f59e0b;
+    background: rgba(245,158,11,0.1);
+}
+.orient-section-header.fam + .orient-lines-group .orient-line.selected .orient-line-check {
+    background: #f59e0b;
+}

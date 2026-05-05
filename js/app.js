@@ -544,7 +544,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     codigo:               parseInt(t.dataset.codigo),
                     nome:                 t.dataset.texto,
                     orientacao_paciente:  t.dataset.orientPac || '',
-                    orientacao_enfermagem: t.dataset.orientEnf || ''
+                    orientacao_familia:    t.dataset.orientEnf || ''
                 }));
                 const nocsSelected = [...panel.querySelectorAll('.tag-item.noc.checked')].map(t => ({
                     id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto
@@ -610,11 +610,11 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="orient-lines-group">${buildOrientLines(orientPac, 'orientacoes_paciente')}</div>
             ` : ''}
             ${orientEnf ? `
-            <div class="orient-section-header enf">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                Orientação de Enfermagem — clique para selecionar
+            <div class="orient-section-header fam">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                Orientação ao Familiar / Cuidador — clique para selecionar
             </div>
-            <div class="orient-lines-group">${buildOrientLines(orientEnf, 'orientacoes_enfermagem')}</div>
+            <div class="orient-lines-group">${buildOrientLines(orientEnf, 'orientacoes_familia')}</div>
             ` : ''}
         `;
 
@@ -671,7 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="plano-dx-body">
                     ${dx.nics.map(n => {
                         const pac = (n.orientacoes_paciente  || []).length;
-                        const enf = (n.orientacoes_enfermagem || []).length;
+                        const enf = (n.orientacoes_familia || []).length;
                         return `<div class="plano-item nic">
                             <span class="plano-item-badge">NIC</span>
                             <span class="plano-item-text">${n.nome}${pac||enf ? ` <span style="font-size:0.68rem;color:var(--green)">(${pac} orientações pac.)</span>` : ''}</span>
@@ -904,7 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Seção orientações ao familiar/enfermagem
         const todasOrientEnf = saePlan.flatMap(dx =>
-            dx.nics.flatMap(n => n.orientacoes_enfermagem || [])
+            dx.nics.flatMap(n => n.orientacoes_familia || [])
         ).filter(Boolean);
 
         const plainText =
@@ -936,7 +936,7 @@ ${followupData ? 'Agendado para: '+new Date(followupData).toLocaleString('pt-BR'
 [ORIENTAÇÃO AO PACIENTE]
 ${todasOrientPac.map(o => o.trim()).join('\n')}` : ''}${todasOrientEnf.length ? `
 
-[ORIENTAÇÃO AO ACOMPANHANTE / ENFERMAGEM]
+[ORIENTAÇÃO AO FAMILIAR / CUIDADOR]
 ${todasOrientEnf.map(o => o.trim()).join('\n')}` : ''}`;
 
                 const riskCls = state.riskLevel === 'alto' ? 'risk-label-high' : state.riskLevel === 'moderado' ? 'risk-label-mod' : 'risk-label-low';
