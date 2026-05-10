@@ -520,8 +520,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Renderiza painel de orientações
                     const _pac = (tag.dataset.orientPac||'').replace(/\|\|\|/g,'\n');
                     const _fam = (tag.dataset.orientEnf||'').replace(/\|\|\|/g,'\n');
-                    console.log('[ORIENT PAC]', _pac.substring(0,60));
-                    console.log('[ORIENT FAM]', _fam.substring(0,60));
+                    console.log('[ORIENT PAC len]', _pac.length, _pac.substring(0,60));
+                    console.log('[ORIENT FAM len]', _fam.length, _fam.substring(0,60));
                     renderOrientPanel(tag.dataset.texto, _pac, _fam, tag.dataset.id, tag.classList.contains('checked'));
                 });
             });
@@ -544,7 +544,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     orientacoes_paciente:  [],
                     orientacoes_familia:   [],
                     _orientPacBase: (t.dataset.orientPac||'').replace(/\|\|\|/g,'\n'),
-                    _orientFamBase: (t.dataset.orientEnf||'').replace(/\|\|\|/g,'\n')
+                    _orientFamBase: (t.dataset.orientEnf||'').replace(/\|\|\|/g,'\n'),
+                    _hasOrient: t.dataset.hasOrient === 'true'
                 }));
                 const nocsSelected = [...panel.querySelectorAll('.tag-item.noc.checked')].map(t => ({
                     id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto
@@ -568,59 +569,38 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderOrientPanel(nomeNic, orientPac, orientEnf, nicId, isChecked) {
         const panel = document.getElementById('orient-panel');
 
-        if (!orientPac && !orientEnf) {
-            panel.innerHTML = `<div class="empty-panel">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/></svg>
-                <p style="font-size:0.78rem">Nenhuma orientação cadastrada para esta intervenção.</p>
-            </div>`;
+        const hasPac = orientPac && orientPac.trim().length > 3;
+        const hasFam = orientEnf && orientEnf.trim().length > 3;
+
+        if (!hasPac && !hasFam) {
+            panel.innerHTML = '<div class="empty-panel">' +
+                '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/></svg>' +
+                '<p style="font-size:0.78rem">Nenhuma orientação cadastrada para esta intervenção.</p>' +
+                '</div>';
             return;
         }
 
-        // Divide orientações em linhas clicáveis
-        function buildOrientLines(text, type) {
-            if (!text || !text.trim()) return '';
-            const planDx  = state.plano.find(p => p.codigo === state.focusDx);
-            const planNic = planDx?.nics.find(n => n.id === nicId);
-            const selected = planNic ? (planNic[type] || []) : [];
+        let html = '<div class="orient-nic-header">' +
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg>' +
+            ' NIC: ' + nomeNic + '</div>';
 
-            const linhas = text.replace(/\|\|\|/g,'\n').split('\n')
-                .map(l => l.trim()).filter(l => l.length > 3);
-
-            if (!linhas.length) return '';
-
-            return linhas.map((line, idx) => {
-                const lineId   = type + '_' + nicId + '_' + idx;
-                const isActive = selected.includes(line);
-                return '<div class="orient-line' + (isActive ? ' selected' : '') + '"' +
-                    ' data-type="' + type + '" data-nicid="' + nicId + '" data-line="' + line.replace(/"/g,'&quot;') + '" data-lineid="' + lineId + '">' +
-                    '<span class="orient-line-check">' + (isActive ? '✓' : '+') + '</span>' +
-                    '<span class="orient-line-text">' + line + '</span>' +
-                    '</div>';
-            }).join('');
+        if (hasPac) {
+            html += '<div class="orient-section-header pac">' +
+                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' +
+                ' Orientações ao Paciente — clique para selecionar</div>' +
+                '<div class="orient-lines-group">' + buildOrientLines(orientPac, 'orientacoes_paciente') + '</div>';
         }
 
-        panel.innerHTML = `
-            <div class="orient-nic-header">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg>
-                NIC: ${nomeNic}
-            </div>
-            ${orientPac ? `
-            <div class="orient-section-header pac">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                Orientação ao Paciente — clique para selecionar
-            </div>
-            <div class="orient-lines-group">${buildOrientLines(orientPac, 'orientacoes_paciente')}</div>
-            ` : ''}
-            ${orientEnf ? `
-            <div class="orient-section-header fam">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-                Orientação ao Familiar / Cuidador — clique para selecionar
-            </div>
-            <div class="orient-lines-group">${buildOrientLines(orientEnf, 'orientacoes_familia')}</div>
-            ` : ''}
-        `;
+        if (hasFam) {
+            html += '<div class="orient-section-header fam">' +
+                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>' +
+                ' Orientações à Família / Cuidador — clique para selecionar</div>' +
+                '<div class="orient-lines-group">' + buildOrientLines(orientEnf, 'orientacoes_familia') + '</div>';
+        }
 
-        // Toggle orientações individualmente
+        panel.innerHTML = html;
+
+                // Toggle orientações individualmente
         panel.querySelectorAll('.orient-line').forEach(line => {
             line.addEventListener('click', () => {
                 const type    = line.dataset.type;
@@ -906,9 +886,9 @@ document.addEventListener('DOMContentLoaded', () => {
         ).filter(o => o && o.trim());
 
         // Seção orientações ao familiar/enfermagem
-        const todasOrientEnf = saePlan.flatMap(dx =>
+        const todasOrientFam = saePlan.flatMap(dx =>
             dx.nics.flatMap(n => n.orientacoes_familia || [])
-        ).filter(Boolean);
+        ).filter(o => o && o.trim());
 
         const plainText =
 `CONSULTA DE ENFERMAGEM - GESTOR DO CUIDADO
