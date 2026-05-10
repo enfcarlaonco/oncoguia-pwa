@@ -520,6 +520,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Renderiza painel de orientações
                     const _pac = (tag.dataset.orientPac||'').replace(/\|\|\|/g,'\n');
                     const _fam = (tag.dataset.orientEnf||'').replace(/\|\|\|/g,'\n');
+                    console.log('[ORIENT PAC]', _pac.substring(0,60));
+                    console.log('[ORIENT FAM]', _fam.substring(0,60));
                     renderOrientPanel(tag.dataset.texto, _pac, _fam, tag.dataset.id, tag.classList.contains('checked'));
                 });
             });
@@ -576,23 +578,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Divide orientações em linhas clicáveis
         function buildOrientLines(text, type) {
-            if (!text) return '';
+            if (!text || !text.trim()) return '';
             const planDx  = state.plano.find(p => p.codigo === state.focusDx);
             const planNic = planDx?.nics.find(n => n.id === nicId);
             const selected = planNic ? (planNic[type] || []) : [];
 
-            return text.replace(/\|\|\|/g,'\n').split('\n')
-                .map(line => line.trim())
-                .filter(line => line.length > 0)
-                .map((line, idx) => {
-                    const lineId   = `${type}_${nicId}_${idx}`;
-                    const isActive = selected.includes(line);
-                    return `<div class="orient-line${isActive ? ' selected' : ''}"
-                                 data-type="${type}" data-nicid="${nicId}" data-line="${line.replace(/"/g,'&quot;')}" data-lineid="${lineId}">
-                        <span class="orient-line-check">${isActive ? '✓' : '+'}</span>
-                        <span class="orient-line-text">${line}</span>
-                    </div>`;
-                }).join('');
+            const linhas = text.replace(/\|\|\|/g,'\n').split('\n')
+                .map(l => l.trim()).filter(l => l.length > 3);
+
+            if (!linhas.length) return '';
+
+            return linhas.map((line, idx) => {
+                const lineId   = type + '_' + nicId + '_' + idx;
+                const isActive = selected.includes(line);
+                return '<div class="orient-line' + (isActive ? ' selected' : '') + '"' +
+                    ' data-type="' + type + '" data-nicid="' + nicId + '" data-line="' + line.replace(/"/g,'&quot;') + '" data-lineid="' + lineId + '">' +
+                    '<span class="orient-line-check">' + (isActive ? '✓' : '+') + '</span>' +
+                    '<span class="orient-line-text">' + line + '</span>' +
+                    '</div>';
+            }).join('');
         }
 
         panel.innerHTML = `
@@ -933,10 +937,10 @@ ${conduta || 'Apenas registro assistencial.'}
 ${followupData ? 'Agendado para: '+new Date(followupData).toLocaleString('pt-BR') : ''}${todasOrientPac.length ? `
 
 [ORIENTAÇÃO AO PACIENTE]
-${todasOrientPac.map(o => o.trim()).join('\n')}` : ''}${todasOrientEnf.length ? `
+${todasOrientPac.map(o => o.trim()).join('\n')}` : ''}${todasOrientFam.length ? `
 
-[ORIENTAÇÃO AO FAMILIAR / CUIDADOR]
-${todasOrientEnf.map(o => o.trim()).join('\n')}` : ''}`;
+[ORIENTAÇÃO AO ACOMPANHANTE / FAMILIAR]
+${todasOrientFam.map(o => o.trim()).join('\n')}` : ''}`;
 
                 const riskCls = state.riskLevel === 'alto' ? 'risk-label-high' : state.riskLevel === 'moderado' ? 'risk-label-mod' : 'risk-label-low';
         const visualHtml = `
