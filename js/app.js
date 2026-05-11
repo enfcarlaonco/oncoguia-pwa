@@ -468,8 +468,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const checked = selectedNics.includes(uid) ? ' checked' : '';
                 const focused = state.focusNic === uid ? ' focused' : '';
                 const texto   = (i.nome_intervencao||'').replace(/"/g,'&quot;');
+                // orientacao_paciente = col E (paciente) | contexto_uso = col F (família)
+                // fallback para orientacao_paciente_sugerida se banco ainda tiver seed antigo
                 const orientPac = (i.orientacao_paciente || i.orientacao_paciente_sugerida || '').trim();
-                const orientEnf = (i.contexto_uso || '').trim(); // col F = família/cuidador
+                const orientEnf = (i.contexto_uso || '').trim();
                 const hasOrient = orientPac.length > 0 || orientEnf.length > 0;
                 if (hasOrient) console.log('[ORIENT]', i.nome_intervencao, orientPac.substring(0,80));
                 // Encode newlines to survive HTML attribute
@@ -573,6 +575,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── Painel 3: Orientações ao Paciente e Familiar ──
+    // Constrói linhas clicáveis de orientação
+    function buildOrientLines(text, type) {
+        if (!text || !text.trim()) return '';
+        const planDx  = state.plano.find(p => p.codigo === state.focusDx);
+        const planNic = planDx ? planDx.nics.find(n => n.id === nicId) : null;
+        const selected = planNic ? (planNic[type] || []) : [];
+
+        const linhas = (text || '').replace(/[|]{3}/g, String.fromCharCode(10)).split(String.fromCharCode(10));
+        if (!linhas.length) return '';
+
+        return linhas.map((line, idx) => {
+            const isActive = selected.includes(line);
+            return '<div class="orient-line' + (isActive ? ' selected' : '') + '"' +
+                ' data-type="' + type + '" data-nicid="' + nicId + '"' +
+                ' data-line="' + line.replace(/"/g,'&quot;') + '">' +
+                '<span class="orient-line-check">' + (isActive ? '✓' : '+') + '</span>' +
+                '<span class="orient-line-text">' + line + '</span>' +
+                '</div>';
+        }).join('');
+    }
+
     function renderOrientPanel(nomeNic, orientPac, orientEnf, nicId, isChecked) {
         const panel = document.getElementById('orient-panel');
 
