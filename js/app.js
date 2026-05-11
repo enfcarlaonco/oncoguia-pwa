@@ -527,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     panel.querySelectorAll('.tag-item.nic').forEach(t => t.classList.remove('focused'));
                     tag.classList.add('focused');
                     // Renderiza painel de orientações
-        const linhas = text.split('|||').join('\n').split('\n')
+                    const _pac = (tag.dataset.orientPac||'').replace(/[|][|][|]/g,'\n');
                     const _fam = (tag.dataset.orientEnf||'').replace(/\|\|\|/g,'\n');
                     console.log('[ORIENT PAC len]', _pac.length, _pac.substring(0,60));
                     console.log('[ORIENT FAM len]', _fam.length, _fam.substring(0,60));
