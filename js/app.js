@@ -617,7 +617,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ── SEGUIMENTO ──
-    async function buildFollowupPanel() {
+    window.buildFollowupPanel = async function buildFollowupPanel() {
         const panel = document.getElementById('followup-actions-panel');
         let items = [];
         if (state.plano && state.plano.length) {
@@ -823,4 +823,3 @@ saeText + '\n\n' +
     window.loadNanda      = loadNanda;
     window.activateModule = activateModule;
 });
-
