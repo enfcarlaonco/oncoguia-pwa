@@ -448,6 +448,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await api('GET', `/referencia/nanda/${codigo}/sugestoes`);
             const intervencoes_nic = data.intervencoes_nic || [];
             const resultados_noc   = data.resultados_noc   || [];
+            // DEBUG — verificar campos retornados
+            if (intervencoes_nic.length > 0) {
+                const primeiro = intervencoes_nic[0];
+                console.log('[API NIC campos]', Object.keys(primeiro));
+                console.log('[API orientacao_paciente]', (primeiro.orientacao_paciente||'').substring(0,80));
+                console.log('[API contexto_uso]', (primeiro.contexto_uso||'').substring(0,80));
+            }
 
             const planDx       = state.plano.find(p => p.codigo === codigo);
             const selectedNics = planDx ? planDx.nics.map(n => n.id) : [];
