@@ -527,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     panel.querySelectorAll('.tag-item.nic').forEach(t => t.classList.remove('focused'));
                     tag.classList.add('focused');
                     // Renderiza painel de orientações
-                    const _pac = (tag.dataset.orientPac||'').replace(/\|\|\|/g,'\n');
+        const linhas = text.split('|||').join('\n').split('\n')
                     const _fam = (tag.dataset.orientEnf||'').replace(/\|\|\|/g,'\n');
                     console.log('[ORIENT PAC len]', _pac.length, _pac.substring(0,60));
                     console.log('[ORIENT FAM len]', _fam.length, _fam.substring(0,60));
@@ -576,20 +576,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── Painel 3: Orientações ao Paciente e Familiar ──
     // Constrói linhas clicáveis de orientação
-    function buildOrientLines(text, type) {
+    // nicId e selected são passados como parâmetro para evitar escopo
+    function buildOrientLines(text, type, nicIdParam, selectedList) {
         if (!text || !text.trim()) return '';
-        const planDx  = state.plano.find(p => p.codigo === state.focusDx);
-        const planNic = planDx ? planDx.nics.find(n => n.id === nicId) : null;
-        const selected = planNic ? (planNic[type] || []) : [];
+        selectedList = selectedList || [];
 
-        const linhas = (text || '').replace(/[|]{3}/g, String.fromCharCode(10)).split(String.fromCharCode(10));
+        const linhas = text.split('|||').join('\n').split('\n').map(function(l){return l.trim();}).filter(function(l){return l.length>3;});
         if (!linhas.length) return '';
-
-        return linhas.map((line, idx) => {
-            const isActive = selected.includes(line);
+        return linhas.map(function(line) {
+            const isActive = selectedList.indexOf(line) >= 0;
             return '<div class="orient-line' + (isActive ? ' selected' : '') + '"' +
-                ' data-type="' + type + '" data-nicid="' + nicId + '"' +
-                ' data-line="' + line.replace(/"/g,'&quot;') + '">' +
+                ' data-type="' + type + '" data-nicid="' + nicIdParam + '"' +
+                ' data-line="' + line.replace(/"/g, '&quot;') + '">' +
                 '<span class="orient-line-check">' + (isActive ? '✓' : '+') + '</span>' +
                 '<span class="orient-line-text">' + line + '</span>' +
                 '</div>';
@@ -618,14 +616,14 @@ document.addEventListener('DOMContentLoaded', () => {
             html += '<div class="orient-section-header pac">' +
                 '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' +
                 ' Orientações ao Paciente — clique para selecionar</div>' +
-                '<div class="orient-lines-group">' + buildOrientLines(orientPac, 'orientacoes_paciente') + '</div>';
+                '<div class="orient-lines-group">' + buildOrientLines(orientPac, 'orientacoes_paciente', nicId, (function(){var pd=state.plano.find(function(p){return p.codigo===state.focusDx;});var pn=pd?pd.nics.find(function(n){return n.id===nicId;}):null;return pn?(pn.orientacoes_paciente||[]):[];})()) + '</div>';
         }
 
         if (hasFam) {
             html += '<div class="orient-section-header fam">' +
                 '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>' +
                 ' Orientações à Família / Cuidador — clique para selecionar</div>' +
-                '<div class="orient-lines-group">' + buildOrientLines(orientEnf, 'orientacoes_familia') + '</div>';
+                '<div class="orient-lines-group">' + buildOrientLines(orientEnf, 'orientacoes_familia', nicId, (function(){var pd=state.plano.find(function(p){return p.codigo===state.focusDx;});var pn=pd?pd.nics.find(function(n){return n.id===nicId;}):null;return pn?(pn.orientacoes_familia||[]):[];})()) + '</div>';
         }
 
         panel.innerHTML = html;
