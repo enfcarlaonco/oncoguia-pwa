@@ -31,7 +31,7 @@ const state = {
     plano:      [],
     focusDx:    null,
     focusNic:   null,
-    pendingOrient: {},  // buffer temporário: { nicId: { orientacoes_paciente: [], orientacoes_familia: [] } }
+    pendingOrient: {},  // buffer temporário: { dxCodigo: { orientacoes_paciente: [], orientacoes_familia: [] } }
 };
 
 function activateModule(targetId) {
@@ -48,22 +48,26 @@ function activateModule(targetId) {
 }
 
 // ── Constrói linhas clicáveis de orientação ──
-// IMPORTANTE: recebe nicIdParam e selectedList explicitamente
-function buildOrientLines(text, type, nicIdParam, selectedList) {
-    if (!text || !text.trim()) return '';
+// Recebe array de strings já pré-processadas
+function buildOrientLines(lines, type, dxCodigo, selectedList) {
+    if (!lines || !lines.length) return '';
     selectedList = selectedList || [];
-    const linhas = text.split('\n').map(function(l){ return l.trim(); }).filter(function(l){ return l.length > 3; });
-    if (!linhas.length) return '';
-    return linhas.map(function(line) {
+    return lines.map(function(line) {
         const isActive = selectedList.indexOf(line) >= 0;
         return '<div class="orient-line' + (isActive ? ' selected' : '') + '"' +
             ' data-type="' + type + '"' +
-            ' data-nicid="' + nicIdParam + '"' +
+            ' data-dxcodigo="' + dxCodigo + '"' +
             ' data-line="' + line.replace(/"/g, '&quot;') + '">' +
             '<span class="orient-line-check">' + (isActive ? '✓' : '+') + '</span>' +
             '<span class="orient-line-text">' + line + '</span>' +
             '</div>';
     }).join('');
+}
+
+// Extrai linhas únicas de um bloco de texto
+function extractOrientLines(text) {
+    if (!text || !text.trim()) return [];
+    return text.split('\n').map(function(l){ return l.trim(); }).filter(function(l){ return l.length > 3; });
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -375,7 +379,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 state.focusNic = null;
                 renderNandaList(document.getElementById('dx-search') ? document.getElementById('dx-search').value : '');
                 loadNicNoc(card.dataset.codigo, card.dataset.titulo);
-                document.getElementById('orient-panel').innerHTML = '<div class="empty-panel"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><p>Selecione uma intervenção NIC para ver as orientações</p></div>';
             });
         });
         const badge = document.getElementById('dx-count-badge');
@@ -387,18 +390,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const titleEl = document.getElementById('nicnoc-title');
         if (titleEl) titleEl.textContent = titulo || 'NIC e NOC';
         panel.innerHTML = '<div class="loading-state" style="padding:16px">Carregando...</div>';
+        document.getElementById('orient-panel').innerHTML = '<div class="loading-state" style="padding:16px">Carregando orientações...</div>';
         try {
             const data = await api('GET', '/referencia/nanda/' + codigo + '/sugestoes');
             const intervencoes_nic = data.intervencoes_nic || [];
             const resultados_noc   = data.resultados_noc   || [];
-
-            // DEBUG
-            if (intervencoes_nic.length > 0) {
-                const p = intervencoes_nic[0];
-                console.log('[API campos]', Object.keys(p));
-                console.log('[orientacao_paciente]', (p.orientacao_paciente||'').substring(0,80));
-                console.log('[contexto_uso]', (p.contexto_uso||'').substring(0,80));
-            }
 
             const planDx       = state.plano.find(function(p){ return p.codigo === codigo; });
             const selectedNics = planDx ? planDx.nics.map(function(n){ return n.id; }) : [];
@@ -406,25 +402,30 @@ document.addEventListener('DOMContentLoaded', function() {
             const dxData       = state.nandaCache.find(function(d){ return d.codigo_nanda === codigo; });
             const enunciado    = dxData ? (dxData.enunciado_pes || '') : '';
 
+            // ── Agrega todas as orientações do NANDA (colunas E e F) de todos os NICs ──
+            const allPacLines = [];
+            const allFamLines = [];
+            intervencoes_nic.forEach(function(nic) {
+                // Col E: orientação ao paciente
+                extractOrientLines((nic.orientacao_paciente || nic.orientacao_paciente_sugerida || '')).forEach(function(line) {
+                    if (allPacLines.indexOf(line) < 0) allPacLines.push(line);
+                });
+                // Col F: orientação à família/cuidador (contexto_uso)
+                extractOrientLines((nic.contexto_uso || '')).forEach(function(line) {
+                    if (allFamLines.indexOf(line) < 0) allFamLines.push(line);
+                });
+            });
+
             const nicHtml = intervencoes_nic.map(function(i) {
-                const uid       = 'nic_' + i.codigo_nic;
-                const checked   = selectedNics.indexOf(uid) >= 0 ? ' checked' : '';
-                const focused   = state.focusNic === uid ? ' focused' : '';
-                const texto     = (i.nome_intervencao||'').replace(/"/g,'&quot;');
-                // Col E = orientacao_paciente | Col F = contexto_uso (família)
-                const orientPac = (i.orientacao_paciente || i.orientacao_paciente_sugerida || '').trim();
-                const orientFam = (i.contexto_uso || '').trim();
-                const hasOrient = orientPac.length > 0 || orientFam.length > 0;
-                // Armazena como atributos data-* — sem codificação especial, apenas escapa aspas
-                return '<div class="tag-item nic' + checked + focused + '"' +
+                const uid     = 'nic_' + i.codigo_nic;
+                const checked = selectedNics.indexOf(uid) >= 0 ? ' checked' : '';
+                const texto   = (i.nome_intervencao||'').replace(/"/g,'&quot;');
+                return '<div class="tag-item nic' + checked + '"' +
                     ' data-id="' + uid + '"' +
                     ' data-tipo="nic"' +
                     ' data-codigo="' + i.codigo_nic + '"' +
-                    ' data-texto="' + texto + '"' +
-                    ' data-orient-pac="' + orientPac.replace(/"/g,'&quot;').replace(/\n/g,'&#10;') + '"' +
-                    ' data-orient-fam="' + orientFam.replace(/"/g,'&quot;').replace(/\n/g,'&#10;') + '">' +
+                    ' data-texto="' + texto + '">' +
                     i.nome_intervencao +
-                    (hasOrient ? ' <span style="font-size:0.65rem;opacity:0.6">📋</span>' : '') +
                     '<span class="tag-check">✓</span></div>';
             }).join('') || '<div class="loading-state">Nenhuma intervenção cadastrada.</div>';
 
@@ -449,19 +450,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
                 (planDx ? 'Atualizar no Plano' : 'Adicionar ao Plano') + '</button>';
 
-            // Clique em NIC → Painel 3
+            // Clique em NIC → apenas alterna marcação (sem abrir painel de orientações)
             panel.querySelectorAll('.tag-item.nic').forEach(function(tag) {
                 tag.addEventListener('click', function() {
                     tag.classList.toggle('checked');
                     state.focusNic = tag.dataset.id;
-                    panel.querySelectorAll('.tag-item.nic').forEach(function(t){ t.classList.remove('focused'); });
-                    tag.classList.add('focused');
-                    // Decodifica &#10; de volta para \n
-                    const pac = (tag.dataset.orientPac||'').replace(/&#10;/g,'\n');
-                    const fam = (tag.dataset.orientFam||'').replace(/&#10;/g,'\n');
-                    console.log('[PAC]', pac.length, pac.substring(0,60));
-                    console.log('[FAM]', fam.length, fam.substring(0,60));
-                    renderOrientPanel(tag.dataset.texto, pac, fam, tag.dataset.id);
                 });
             });
 
@@ -470,45 +463,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 tag.addEventListener('click', function(){ tag.classList.toggle('checked'); });
             });
 
-            // Adicionar ao Plano
+            // Exibe orientações imediatamente ao selecionar o NANDA
+            renderOrientPanelDx(titulo, allPacLines, allFamLines, codigo);
+
+            // Adicionar ao Plano — captura orient do DOM atual (nível NANDA)
             document.getElementById('btn-add-dx-plan').addEventListener('click', function(e) {
                 const dxCodigo = e.currentTarget.dataset.codigo;
                 const dxTitulo = e.currentTarget.dataset.titulo;
                 const dxEnunc  = e.currentTarget.dataset.enunciado;
 
-                // Captura as linhas atualmente selecionadas no painel de orientação (NIC focada)
-                const currentOrientPac = Array.from(document.querySelectorAll('#orient-panel .orient-line.selected[data-type="orientacoes_paciente"]')).map(function(el){ return el.dataset.line; });
-                const currentOrientFam = Array.from(document.querySelectorAll('#orient-panel .orient-line.selected[data-type="orientacoes_familia"]')).map(function(el){ return el.dataset.line; });
+                // DOM sempre tem o estado mais recente (painel exibido para este NANDA)
+                const domPac = Array.from(document.querySelectorAll('#orient-panel .orient-line.selected[data-type="orientacoes_paciente"]')).map(function(el){ return el.dataset.line; });
+                const domFam = Array.from(document.querySelectorAll('#orient-panel .orient-line.selected[data-type="orientacoes_familia"]')).map(function(el){ return el.dataset.line; });
+
+                const existingDx = state.plano.find(function(p){ return p.codigo === dxCodigo; });
+                const pending    = state.pendingOrient[dxCodigo] || {};
+                // Prioridade: DOM > buffer pendente > estado existente
+                const orientPac = domPac.length ? domPac
+                    : (pending.orientacoes_paciente && pending.orientacoes_paciente.length ? pending.orientacoes_paciente
+                    : (existingDx ? (existingDx.orientacoes_paciente || []) : []));
+                const orientFam = domFam.length ? domFam
+                    : (pending.orientacoes_familia && pending.orientacoes_familia.length ? pending.orientacoes_familia
+                    : (existingDx ? (existingDx.orientacoes_familia || []) : []));
 
                 const nicsSelected = Array.from(panel.querySelectorAll('.tag-item.nic.checked')).map(function(t) {
-                    const existingDx  = state.plano.find(function(p){ return p.codigo === dxCodigo; });
-                    const existingNic = existingDx ? existingDx.nics.find(function(n){ return n.id === t.dataset.id; }) : null;
-                    const isFocused   = t.dataset.id === state.focusNic;
-                    const pending     = state.pendingOrient[t.dataset.id] || {};
-                    // Prioridade: DOM (NIC focada) > buffer pendente > estado existente > vazio
-                    const orientPac = isFocused && currentOrientPac.length
-                        ? currentOrientPac
-                        : (pending.orientacoes_paciente && pending.orientacoes_paciente.length
-                            ? pending.orientacoes_paciente
-                            : (existingNic ? (existingNic.orientacoes_paciente || []) : []));
-                    const orientFam = isFocused && currentOrientFam.length
-                        ? currentOrientFam
-                        : (pending.orientacoes_familia && pending.orientacoes_familia.length
-                            ? pending.orientacoes_familia
-                            : (existingNic ? (existingNic.orientacoes_familia  || []) : []));
-                    return {
-                        id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto,
-                        orientacoes_paciente: orientPac,
-                        orientacoes_familia:  orientFam,
-                        _pac: (t.dataset.orientPac||'').replace(/&#10;/g,'\n'),
-                        _fam: (t.dataset.orientFam||'').replace(/&#10;/g,'\n')
-                    };
+                    return { id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto };
                 });
                 const nocsSelected = Array.from(panel.querySelectorAll('.tag-item.noc.checked')).map(function(t) {
                     return { id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto };
                 });
+
                 state.plano = state.plano.filter(function(p){ return p.codigo !== dxCodigo; });
-                state.plano.push({ codigo: dxCodigo, titulo: dxTitulo, enunciado: dxEnunc, nics: nicsSelected, nocs: nocsSelected });
+                state.plano.push({
+                    codigo: dxCodigo, titulo: dxTitulo, enunciado: dxEnunc,
+                    nics: nicsSelected, nocs: nocsSelected,
+                    orientacoes_paciente: orientPac,
+                    orientacoes_familia:  orientFam
+                });
+                delete state.pendingOrient[dxCodigo];
                 renderPlanoMontado();
                 renderNandaList(document.getElementById('dx-search') ? document.getElementById('dx-search').value : '');
                 autoSavePlano();
@@ -520,38 +512,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // ── Painel 3: Orientações ──
-    function renderOrientPanel(nomeNic, orientPac, orientFam, nicId) {
-        const panel  = document.getElementById('orient-panel');
-        const hasPac = orientPac && orientPac.trim().length > 3;
-        const hasFam = orientFam && orientFam.trim().length > 3;
+    // ── Painel 3: Orientações por NANDA ──
+    // Recebe listas pré-agregadas de todas as linhas do diagnóstico selecionado
+    function renderOrientPanelDx(dxTitulo, pacLines, famLines, dxCodigo) {
+        const panel = document.getElementById('orient-panel');
 
-        if (!hasPac && !hasFam) {
-            panel.innerHTML = '<div class="empty-panel"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/></svg><p style="font-size:0.78rem">Nenhuma orientação cadastrada.</p></div>';
+        if (!pacLines.length && !famLines.length) {
+            panel.innerHTML = '<div class="empty-panel"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/></svg><p style="font-size:0.78rem">Nenhuma orientação cadastrada para este diagnóstico.</p></div>';
             return;
         }
 
-        // Busca selecionadas já no plano
-        function getSelected(type) {
-            const pd = state.plano.find(function(p){ return p.codigo === state.focusDx; });
-            const pn = pd ? pd.nics.find(function(n){ return n.id === nicId; }) : null;
-            return pn ? (pn[type] || []) : [];
-        }
+        const planDx  = state.plano.find(function(p){ return p.codigo === dxCodigo; });
+        const pending = state.pendingOrient[dxCodigo] || {};
+        const selPac  = planDx ? (planDx.orientacoes_paciente || []) : (pending.orientacoes_paciente || []);
+        const selFam  = planDx ? (planDx.orientacoes_familia  || []) : (pending.orientacoes_familia  || []);
 
-        let html = '<div class="orient-nic-header"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg> NIC: ' + nomeNic + '</div>';
+        let html = '<div class="orient-nic-header"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg> ' + dxTitulo + '</div>';
 
-        if (hasPac) {
+        if (pacLines.length) {
             html += '<div class="orient-section-header pac"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Orientações ao Paciente</div>';
-            html += '<div class="orient-lines-group">' + buildOrientLines(orientPac, 'orientacoes_paciente', nicId, getSelected('orientacoes_paciente')) + '</div>';
+            html += '<div class="orient-lines-group">' + buildOrientLines(pacLines, 'orientacoes_paciente', dxCodigo, selPac) + '</div>';
         }
-        if (hasFam) {
+        if (famLines.length) {
             html += '<div class="orient-section-header fam"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> Orientações à Família / Cuidador</div>';
-            html += '<div class="orient-lines-group">' + buildOrientLines(orientFam, 'orientacoes_familia', nicId, getSelected('orientacoes_familia')) + '</div>';
+            html += '<div class="orient-lines-group">' + buildOrientLines(famLines, 'orientacoes_familia', dxCodigo, selFam) + '</div>';
         }
 
         panel.innerHTML = html;
 
-        // Toggle seleção de cada linha
+        // Toggle seleção: salva no DX do plano (se já incluído) ou no buffer pendente
         panel.querySelectorAll('.orient-line').forEach(function(line) {
             line.addEventListener('click', function() {
                 const type     = line.dataset.type;
@@ -560,21 +549,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 const sel = line.classList.contains('selected');
                 line.querySelector('.orient-line-check').textContent = sel ? '✓' : '+';
 
-                const planDx  = state.plano.find(function(p){ return p.codigo === state.focusDx; });
-                const planNic = planDx ? planDx.nics.find(function(n){ return n.id === nicId; }) : null;
-
-                if (planNic) {
-                    // NIC já no plano — atualiza diretamente
-                    if (!planNic[type]) planNic[type] = [];
-                    if (sel) { if (planNic[type].indexOf(lineText) < 0) planNic[type].push(lineText); }
-                    else     { planNic[type] = planNic[type].filter(function(l){ return l !== lineText; }); }
+                const planDx2 = state.plano.find(function(p){ return p.codigo === dxCodigo; });
+                if (planDx2) {
+                    if (!planDx2[type]) planDx2[type] = [];
+                    if (sel) { if (planDx2[type].indexOf(lineText) < 0) planDx2[type].push(lineText); }
+                    else     { planDx2[type] = planDx2[type].filter(function(l){ return l !== lineText; }); }
                     renderPlanoMontado();
                 } else {
-                    // NIC ainda não no plano — salva no buffer temporário
-                    if (!state.pendingOrient[nicId]) state.pendingOrient[nicId] = { orientacoes_paciente: [], orientacoes_familia: [] };
-                    const buf = state.pendingOrient[nicId][type];
+                    if (!state.pendingOrient[dxCodigo]) state.pendingOrient[dxCodigo] = { orientacoes_paciente: [], orientacoes_familia: [] };
+                    const buf = state.pendingOrient[dxCodigo][type];
                     if (sel) { if (buf.indexOf(lineText) < 0) buf.push(lineText); }
-                    else     { state.pendingOrient[nicId][type] = buf.filter(function(l){ return l !== lineText; }); }
+                    else     { state.pendingOrient[dxCodigo][type] = buf.filter(function(l){ return l !== lineText; }); }
                 }
             });
         });
@@ -590,15 +575,16 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         el.innerHTML = state.plano.map(function(dx) {
+            const pac = (dx.orientacoes_paciente || []).length;
+            const fam = (dx.orientacoes_familia  || []).length;
+            const orientLabel = (pac || fam) ? ' · <span style="color:var(--green);font-size:0.72rem">' + pac + 'p/' + fam + 'f orient.</span>' : '';
             return '<div class="plano-dx-block">' +
-                '<div class="plano-dx-header"><div><div class="plano-dx-name">' + dx.titulo + '</div><div class="plano-dx-code">[' + dx.codigo + '] · ' + dx.nics.length + ' NIC · ' + dx.nocs.length + ' NOC</div></div>' +
+                '<div class="plano-dx-header"><div><div class="plano-dx-name">' + dx.titulo + '</div><div class="plano-dx-code">[' + dx.codigo + '] · ' + dx.nics.length + ' NIC · ' + dx.nocs.length + ' NOC' + orientLabel + '</div></div>' +
                 '<button class="btn-remove-dx" onclick="removeDxFromPlan(\'' + dx.codigo + '\')" title="Remover">✕</button></div>' +
                 '<div class="plano-dx-body">' +
                 dx.nics.map(function(n) {
-                    const pac = (n.orientacoes_paciente||[]).length;
-                    const fam = (n.orientacoes_familia||[]).length;
                     return '<div class="plano-item nic"><span class="plano-item-badge">NIC</span>' +
-                        '<span class="plano-item-text">' + n.nome + (pac||fam ? ' <span style="font-size:0.68rem;color:var(--green)">(' + pac + 'p/' + fam + 'f)</span>' : '') + '</span>' +
+                        '<span class="plano-item-text">' + n.nome + '</span>' +
                         '<button class="plano-item-remove" onclick="removeItemFromPlan(\'' + dx.codigo + '\',\'nic\',\'' + n.id + '\')" title="Remover">✕</button></div>';
                 }).join('') +
                 dx.nocs.map(function(n) {
@@ -611,12 +597,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.removeDxFromPlan = function(codigo) {
         state.plano = state.plano.filter(function(p){ return p.codigo !== codigo; });
-        // Limpa buffer temporário de orientações pendentes associadas a este DX
-        Object.keys(state.pendingOrient).forEach(function(k){ delete state.pendingOrient[k]; });
+        delete state.pendingOrient[codigo];
         if (state.focusDx === codigo) {
             state.focusDx = null;
             document.getElementById('nic-noc-panel').innerHTML = '<div class="empty-panel"><p>Clique em um diagnóstico</p></div>';
-            document.getElementById('orient-panel').innerHTML  = '<div class="empty-panel"><p>Selecione uma intervenção NIC</p></div>';
+            document.getElementById('orient-panel').innerHTML  = '<div class="empty-panel"><p>Selecione um diagnóstico para ver as orientações</p></div>';
         }
         renderPlanoMontado();
         renderNandaList(document.getElementById('dx-search') ? document.getElementById('dx-search').value : '');
@@ -841,8 +826,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }).join('\n\n')
             : 'Nenhum diagnóstico selecionado.';
 
-        const todasOrientPac = saePlan.flatMap(function(dx){ return dx.nics.flatMap(function(n){ return n.orientacoes_paciente||[]; }); }).filter(function(o){ return o && o.trim(); });
-        const todasOrientFam = saePlan.flatMap(function(dx){ return dx.nics.flatMap(function(n){ return n.orientacoes_familia||[]; }); }).filter(function(o){ return o && o.trim(); });
+        const todasOrientPac = saePlan.flatMap(function(dx){ return dx.orientacoes_paciente || []; }).filter(function(o){ return o && o.trim(); });
+        const todasOrientFam = saePlan.flatMap(function(dx){ return dx.orientacoes_familia  || []; }).filter(function(o){ return o && o.trim(); });
 
         const plainText =
 'CONSULTA DE ENFERMAGEM - GESTOR DO CUIDADO\n' +
