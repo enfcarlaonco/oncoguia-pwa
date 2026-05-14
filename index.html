@@ -14,17 +14,55 @@
 <body>
 
 <!-- ═══════════════════════════════════════════
-     TELA INICIAL — BUSCA POR PRONTUÁRIO
+     TELA 1 — LOGIN
 ═══════════════════════════════════════════ -->
-<div id="screen-search" class="search-screen">
-    <div class="search-card">
-        <div class="search-logo">
-            <svg width="52" height="60" viewBox="0 0 104 120" xmlns="http://www.w3.org/2000/svg">
+<div id="screen-login" class="login-screen">
+    <div class="login-card">
+        <div class="login-logo">
+            <svg width="48" height="56" viewBox="0 0 104 120" xmlns="http://www.w3.org/2000/svg">
                 <defs>
-                    <linearGradient id="sg0" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#2A9DF4"/>
-                        <stop offset="100%" stop-color="#175C9D"/>
-                    </linearGradient>
+                    <linearGradient id="lg0" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2A9DF4"/><stop offset="100%" stop-color="#175C9D"/></linearGradient>
+                    <clipPath id="lc0"><path d="M52,4 L100,18 C100,18 100,88 52,108 C4,88 4,18 4,18 Z"/></clipPath>
+                </defs>
+                <path d="M52,4 L52,108 C52,108 4,88 4,60 L4,18 Z" fill="#2CA76E" clip-path="url(#lc0)"/>
+                <path d="M52,4 L100,18 C100,18 100,88 52,108 Z" fill="url(#lg0)" clip-path="url(#lc0)"/>
+                <path d="M52,4 L100,18 C100,18 100,88 52,108 C4,88 4,18 4,18 Z" fill="none" stroke="#2CA76E" stroke-width="4"/>
+                <rect x="21" y="34" width="11" height="32" rx="2" fill="white"/>
+                <rect x="11" y="44" width="31" height="11" rx="2" fill="white"/>
+                <polyline points="58,62 62,62 65,44 68,82 71,56 74,62 80,62" fill="none" stroke="#00C853" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div>
+                <div class="login-brand-name">GuideNurse</div>
+                <div class="login-brand-sub">ONCOLOGY</div>
+            </div>
+        </div>
+        <h2 class="login-title">Acesso ao Sistema</h2>
+        <div class="field-group" style="margin-bottom:14px">
+            <label style="font-size:0.75rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.04em">Enfermeiro(a)</label>
+            <select id="login-user" class="select-field">
+                <option value="">Selecione...</option>
+                <option value="Carla Alves">Carla Alves</option>
+                <option value="Danielle Cabral">Danielle Cabral</option>
+            </select>
+        </div>
+        <div class="field-group" style="margin-bottom:20px">
+            <label style="font-size:0.75rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.04em">Senha</label>
+            <input type="password" id="login-senha" class="search-input" placeholder="••••••••" style="width:100%;box-sizing:border-box">
+        </div>
+        <div id="login-error" style="display:none;color:#DC2626;font-size:0.8rem;margin-bottom:12px;text-align:center">Usuário ou senha incorretos.</div>
+        <button class="btn-primary" id="btn-login" style="width:100%;justify-content:center">Entrar</button>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TELA 2 — LISTA DE PACIENTES
+═══════════════════════════════════════════ -->
+<div id="screen-search" class="patients-screen" style="display:none">
+    <header class="patients-header">
+        <div class="patients-brand">
+            <svg width="28" height="32" viewBox="0 0 104 120" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="sg0" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2A9DF4"/><stop offset="100%" stop-color="#175C9D"/></linearGradient>
                     <clipPath id="sc0"><path d="M52,4 L100,18 C100,18 100,88 52,108 C4,88 4,18 4,18 Z"/></clipPath>
                 </defs>
                 <path d="M52,4 L52,108 C52,108 4,88 4,60 L4,18 Z" fill="#2CA76E" clip-path="url(#sc0)"/>
@@ -35,24 +73,87 @@
                 <polyline points="58,62 62,62 65,44 68,82 71,56 74,62 80,62" fill="none" stroke="#00C853" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
             <div>
-                <div class="search-brand-name">GuideNurse</div>
-                <div class="search-brand-sub">ONCOLOGY</div>
+                <div style="font-weight:700;font-size:0.95rem;color:#0F2A44">GuideNurse</div>
+                <div style="font-size:0.62rem;color:#2CA76E;font-weight:600;letter-spacing:.08em">ONCOLOGY</div>
             </div>
         </div>
-        <h2 class="search-title">Buscar Paciente</h2>
-        <p class="search-desc">Informe o número de registro institucional para iniciar o atendimento</p>
-        <div class="search-input-row">
-            <input type="text" id="search-reg" placeholder="Ex: 123698-8" class="search-input" autocomplete="off">
-            <button class="btn-search" id="btn-search">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                Buscar
+        <div class="patients-search-bar">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="search-reg" placeholder="Buscar por registro ou iniciais..." class="patients-search-input" autocomplete="off">
+            <button class="btn-search-sm" id="btn-search">Buscar</button>
+        </div>
+        <div class="patients-header-right">
+            <span class="patients-user-badge" id="logged-user-badge"></span>
+            <button class="btn-logout" id="btn-logout">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Sair
             </button>
         </div>
-        <div id="search-result" class="search-result" style="display:none;"></div>
-        <button class="btn-new-patient" id="btn-new-patient">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Novo Paciente
-        </button>
+    </header>
+
+    <div class="patients-body">
+        <div class="patients-title-row">
+            <h2 class="patients-section-title">Pacientes</h2>
+            <button class="btn-primary btn-sm" id="btn-new-patient">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Novo Paciente
+            </button>
+        </div>
+
+        <!-- Resultado de busca (oculto por padrão) -->
+        <div id="search-result" style="display:none;margin-bottom:16px;"></div>
+
+        <!-- Tabela de todos os pacientes -->
+        <div class="patients-table-wrap">
+            <table class="patients-table" id="patients-table">
+                <thead>
+                    <tr>
+                        <th>Iniciais</th>
+                        <th>Nº Registro</th>
+                        <th>Data Nasc.</th>
+                        <th>Sexo</th>
+                        <th>Diagnóstico</th>
+                        <th>Protocolo</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="patients-table-body">
+                    <tr><td colspan="8" class="table-empty">Carregando pacientes...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Dar Seguimento ou Nova Consulta ── -->
+<div id="modal-consulta-choice" class="modal-backdrop" style="display:none">
+    <div class="modal-box" style="max-width:420px">
+        <div class="modal-header">
+            <h2 id="modal-choice-title">Atendimento do Paciente</h2>
+            <button class="modal-close" id="close-modal-choice">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div style="padding:20px 24px">
+            <p id="modal-choice-desc" style="font-size:0.85rem;color:#64748b;margin-bottom:20px"></p>
+            <div style="display:flex;flex-direction:column;gap:10px">
+                <button class="btn-primary" id="btn-choice-seguimento" style="justify-content:flex-start;gap:12px;padding:14px 18px">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0"/><polyline points="12 8 12 12 14 14"/></svg>
+                    <div style="text-align:left">
+                        <div style="font-weight:600">Dar Seguimento</div>
+                        <div style="font-size:0.72rem;opacity:.8">Continuar a partir da última consulta realizada</div>
+                    </div>
+                </button>
+                <button class="btn-outline-choice" id="btn-choice-nova-consulta" style="justify-content:flex-start;gap:12px;padding:14px 18px">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    <div style="text-align:left">
+                        <div style="font-weight:600">Realizar Nova Consulta</div>
+                        <div style="font-size:0.72rem;opacity:.8">Iniciar uma nova Consulta de Enfermagem</div>
+                    </div>
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -99,7 +200,7 @@
             </a>
             <a class="nav-item" data-target="module-tasks">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                <span>Tarefas</span>
+                <span>Agenda</span>
             </a>
             <a class="nav-item" data-target="module-indicators">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -147,7 +248,7 @@
                 <button class="tab active" data-target="module-id">Identificação</button>
                 <button class="tab" data-target="module-triage">Consulta de Enfermagem</button>
                 <button class="tab" data-target="module-followup">Seguimento</button>
-                <button class="tab" data-target="module-tasks">Tarefas</button>
+                <button class="tab" data-target="module-tasks">Agenda</button>
                 <button class="tab" data-target="module-indicators">Indicadores</button>
                 <button class="tab" data-target="module-evolution">Evolução do Cuidado</button>
             </nav>
@@ -646,7 +747,7 @@
                     </div>
                     <div class="info-box mt-16">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                        O seguimento será agendado automaticamente na aba Tarefas.
+                        O seguimento será agendado automaticamente na Agenda.
                     </div>
                 </div>
 

@@ -21,18 +21,19 @@ async function api(method, path, body = null) {
 }
 
 const state = {
-    patient:       { id: null, initials: '', reg: '', ciclo: '', protocol: '' },
-    consultaId:    null,
-    ultimaConsulta: null,   // { id_consulta, data_hora, risco, diagnosticos, intervencoes }
-    ecog:          null,
-    symptoms:      {},
-    segSymptoms:   {},
-    riskLevel:     'baixo',
-    nandaCache:    [],
-    plano:         [],
-    focusDx:       null,
-    focusNic:      null,
-    pendingOrient: {},
+    patient:        { id: null, initials: '', reg: '', ciclo: '', protocol: '' },
+    loggedUser:     '',
+    consultaId:     null,
+    ultimaConsulta: null,
+    ecog:           null,
+    symptoms:       {},
+    segSymptoms:    {},
+    riskLevel:      'baixo',
+    nandaCache:     [],
+    plano:          [],
+    focusDx:        null,
+    focusNic:       null,
+    pendingOrient:  {},
 };
 
 function activateModule(targetId) {
@@ -77,16 +78,143 @@ document.addEventListener('DOMContentLoaded', function() {
         el.addEventListener('click', function() { activateModule(el.dataset.target); });
     });
 
-    // ── TELA DE BUSCA ──
-    const screenSearch = document.getElementById('screen-search');
-    const appMain      = document.getElementById('app-main');
+    const screenLogin   = document.getElementById('screen-login');
+    const screenSearch  = document.getElementById('screen-search');
+    const appMain       = document.getElementById('app-main');
 
-    function showApp()    { screenSearch.style.display = 'none';  appMain.style.display = 'flex'; }
+    // ── TELA 1: LOGIN ──
+    function showLogin() {
+        screenLogin.style.display  = 'flex';
+        screenSearch.style.display = 'none';
+        appMain.style.display      = 'none';
+    }
+    function showPatients() {
+        screenLogin.style.display  = 'none';
+        screenSearch.style.display = 'flex';
+        appMain.style.display      = 'none';
+        loadPatientsList();
+    }
+    function showApp() {
+        screenSearch.style.display = 'none';
+        appMain.style.display      = 'flex';
+    }
     function showSearch() {
-        screenSearch.style.display = 'flex'; appMain.style.display = 'none';
+        screenSearch.style.display = 'flex';
+        appMain.style.display      = 'none';
         document.getElementById('search-reg').value = '';
         document.getElementById('search-result').style.display = 'none';
         state.ultimaConsulta = null;
+        loadPatientsList();
+    }
+
+    document.getElementById('btn-login').addEventListener('click', function() {
+        const user  = document.getElementById('login-user').value;
+        const senha = document.getElementById('login-senha').value;
+        const err   = document.getElementById('login-error');
+        if (!user || senha !== 'guidenurse@2026') { err.style.display = 'block'; return; }
+        err.style.display = 'none';
+        state.loggedUser = user;
+        document.getElementById('logged-user-badge').textContent = user;
+        // Pré-preenche enfermeiro em todos os campos
+        document.querySelectorAll('#enfermeiro, #seg-enfermeiro').forEach(function(el){ el.value = user; });
+        showPatients();
+    });
+    document.getElementById('login-senha').addEventListener('keydown', function(e){
+        if (e.key === 'Enter') document.getElementById('btn-login').click();
+    });
+
+    document.getElementById('btn-logout').addEventListener('click', function() {
+        state.loggedUser = '';
+        state.patient = { id: null, initials: '', reg: '', ciclo: '', protocol: '' };
+        state.consultaId = null;
+        state.ultimaConsulta = null;
+        showLogin();
+    });
+
+    // ── TELA 2: LISTA DE PACIENTES ──
+    async function loadPatientsList(q) {
+        const tbody = document.getElementById('patients-table-body');
+        tbody.innerHTML = '<tr><td colspan="8" class="table-empty">Carregando...</td></tr>';
+        try {
+            const pacientes = await api('GET', '/pacientes/busca?q=' + encodeURIComponent(q || ''));
+            if (!pacientes.length) {
+                tbody.innerHTML = '<tr><td colspan="8" class="table-empty">Nenhum paciente cadastrado.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = pacientes.map(function(p) {
+                const dn = p.data_nascimento ? new Date(p.data_nascimento).toLocaleDateString('pt-BR') : '—';
+                return '<tr data-id="' + p.id_paciente + '" data-reg="' + p.registro_instituicao + '" data-iniciais="' + p.iniciais_nome + '">' +
+                    '<td><div class="patients-avatar-cell"><div class="patients-avatar-sm">' + (p.iniciais_nome||'?').substring(0,2) + '</div>' + (p.iniciais_nome||'—') + '</div></td>' +
+                    '<td>' + (p.registro_instituicao||'—') + '</td>' +
+                    '<td>' + dn + '</td>' +
+                    '<td>' + (p.sexo || '—') + '</td>' +
+                    '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (p.diagnostico_oncologico||'—') + '</td>' +
+                    '<td>' + (p.protocolo_atual||'—') + '</td>' +
+                    '<td><span class="followup-badge nic" style="font-size:0.65rem">' + (p.status_paciente||'ativo') + '</span></td>' +
+                    '<td><button class="btn-abrir" data-id="' + p.id_paciente + '" data-reg="' + p.registro_instituicao + '" data-iniciais="' + p.iniciais_nome + '">Abrir</button></td>' +
+                    '</tr>';
+            }).join('');
+            tbody.querySelectorAll('.btn-abrir').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    openPatient(btn.dataset.id, btn.dataset.reg, btn.dataset.iniciais);
+                });
+            });
+        } catch(e) {
+            tbody.innerHTML = '<tr><td colspan="8" class="table-empty" style="color:#DC2626">Erro ao carregar pacientes.</td></tr>';
+        }
+    }
+
+    // ── Abre paciente: verifica última consulta e exibe modal de escolha ──
+    async function openPatient(id, reg, iniciais) {
+        state.patient.id       = parseInt(id);
+        state.patient.reg      = reg;
+        state.patient.initials = iniciais;
+        // Busca última consulta
+        try { state.ultimaConsulta = await api('GET', '/consultas/paciente/' + id + '/ultima-concluida'); }
+        catch(e) { state.ultimaConsulta = null; }
+
+        if (state.ultimaConsulta) {
+            const dataFmt = new Date(state.ultimaConsulta.data_hora).toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+            document.getElementById('modal-choice-title').textContent = iniciais;
+            document.getElementById('modal-choice-desc').textContent =
+                'Última Consulta de Enfermagem realizada em ' + dataFmt + '. Como deseja prosseguir?';
+            document.getElementById('modal-consulta-choice').style.display = 'flex';
+        } else {
+            startNovaConsulta();
+        }
+    }
+
+    document.getElementById('close-modal-choice').addEventListener('click', function() {
+        document.getElementById('modal-consulta-choice').style.display = 'none';
+    });
+
+    document.getElementById('btn-choice-seguimento').addEventListener('click', function() {
+        document.getElementById('modal-consulta-choice').style.display = 'none';
+        setupPatientDisplay();
+        showApp();
+        activateModule('module-followup');
+    });
+
+    document.getElementById('btn-choice-nova-consulta').addEventListener('click', function() {
+        document.getElementById('modal-consulta-choice').style.display = 'none';
+        startNovaConsulta();
+    });
+
+    async function startNovaConsulta() {
+        try {
+            const c = await api('POST', '/consultas', { id_paciente: state.patient.id, tipo_consulta: 'retorno' });
+            state.consultaId = c.id_consulta;
+        } catch(e) {}
+        setupPatientDisplay();
+        showApp();
+        activateModule('module-triage');
+    }
+
+    function setupPatientDisplay() {
+        document.getElementById('display-patient-name').textContent = state.patient.initials || 'Paciente';
+        document.getElementById('display-reg').textContent = state.patient.reg;
+        document.getElementById('patient-avatar').textContent = (state.patient.initials || 'N/A').substring(0,2);
     }
 
     document.getElementById('btn-back-search').addEventListener('click', showSearch);
@@ -94,6 +222,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('btn-new-patient').addEventListener('click', function() {
         state.patient = { id: null, initials: '', reg: '', ciclo: '', protocol: '' };
         state.consultaId = null;
+        state.ultimaConsulta = null;
         state.plano = [];
         state.focusDx = null;
         state.focusNic = null;
@@ -101,52 +230,10 @@ document.addEventListener('DOMContentLoaded', function() {
         activateModule('module-id');
     });
 
-    document.getElementById('btn-search').addEventListener('click', async function() {
+    document.getElementById('btn-search').addEventListener('click', function() {
         const q = document.getElementById('search-reg').value.trim();
-        if (!q) return;
-        const resultDiv = document.getElementById('search-result');
-        resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<div class="loading-state">Buscando...</div>';
-        try {
-            const pacientes = await api('GET', '/pacientes/busca?q=' + encodeURIComponent(q));
-            if (!pacientes.length) {
-                resultDiv.innerHTML = '<div class="search-not-found"><p>Paciente não encontrado com registro <strong>' + q + '</strong>.</p><button class="btn-primary mt-8" id="btn-cadastrar-novo">Cadastrar novo paciente</button></div>';
-                document.getElementById('btn-cadastrar-novo').addEventListener('click', function() {
-                    document.getElementById('reg-inst').value = q;
-                    state.patient.reg = q;
-                    showApp();
-                    activateModule('module-id');
-                });
-                return;
-            }
-            resultDiv.innerHTML = pacientes.map(function(p) {
-                return '<div class="search-patient-card" data-id="' + p.id_paciente + '" data-reg="' + p.registro_instituicao + '" data-iniciais="' + p.iniciais_nome + '">' +
-                    '<div class="spc-avatar">' + p.iniciais_nome.substring(0,2) + '</div>' +
-                    '<div class="spc-info"><strong>' + p.iniciais_nome + '</strong><span>Reg: ' + p.registro_instituicao + ' · ' + (p.protocolo_atual||'—') + '</span></div>' +
-                    '<button class="btn-primary btn-sm">Selecionar</button></div>';
-            }).join('');
-            resultDiv.querySelectorAll('.search-patient-card').forEach(function(card) {
-                card.querySelector('button').addEventListener('click', async function() {
-                    state.patient.id       = parseInt(card.dataset.id);
-                    state.patient.reg      = card.dataset.reg;
-                    state.patient.initials = card.dataset.iniciais;
-                    document.getElementById('display-patient-name').textContent = state.patient.initials;
-                    document.getElementById('display-reg').textContent = state.patient.reg;
-                    document.getElementById('patient-avatar').textContent = state.patient.initials.substring(0,2);
-                    try {
-                        const consulta = await api('POST', '/consultas', { id_paciente: state.patient.id, tipo_consulta: 'retorno' });
-                        state.consultaId = consulta.id_consulta;
-                    } catch(e) {}
-                    // Busca última consulta concluída para contexto do Seguimento
-                    api('GET', '/consultas/paciente/' + state.patient.id + '/ultima-concluida')
-                        .then(function(uc){ state.ultimaConsulta = uc; }).catch(function(){});
-                    showApp();
-                    activateModule('module-triage');
-                });
-            });
-        } catch(e) {
-            resultDiv.innerHTML = '<div class="loading-state" style="color:#DC2626">Erro ao buscar. Tente novamente.</div>';
-        }
+        loadPatientsList(q);
+        document.getElementById('search-result').style.display = 'none';
     });
 
     document.getElementById('search-reg').addEventListener('keydown', function(e) {
