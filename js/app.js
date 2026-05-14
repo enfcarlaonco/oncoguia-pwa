@@ -181,11 +181,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const paciente = await api('POST', '/pacientes', {
                 registro_instituicao: reg, iniciais_nome: iniciais,
                 telefone_1: document.getElementById('pac-tel').value || null,
+                telefone_2: document.getElementById('pac-tel2').value || null,
+                nome_cuidador: document.getElementById('pac-cuidador').value || null,
+                telefone_cuidador: document.getElementById('pac-tel-cuidador').value || null,
                 protocolo_atual: document.getElementById('pac-protocol').value || null,
                 ciclo_atual: parseInt(document.getElementById('pac-ciclo').value) || null,
                 data_nascimento: document.getElementById('pac-nascimento').value || null,
                 sexo: document.getElementById('pac-sexo').value || null,
-                nome_cuidador: document.getElementById('pac-cuidador').value || null,
                 diagnostico_oncologico: document.getElementById('pac-dx').value || null,
                 data_ultima_qt: document.getElementById('pac-ultima-qt').value || null,
                 data_proxima_qt_prevista: document.getElementById('pac-proxima-qt').value || null,
@@ -277,7 +279,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (s.grade >= 3 || s.isRisk) { highCount++; criteria.push({ text: s.label + ': Grau ' + (s.grade||'3+'), level: 'red' }); }
             else if (s.grade === 2)        { modCount++;  criteria.push({ text: s.label + ': Grau 2', level: 'amber' }); }
         });
-        ['rf_toxicidade','rf_internacao','rf_neutropenia'].forEach(function(name) {
+        ['rf_toxicidade','rf_internacao','rf_pa','rf_protocolo','rf_neutropenia','rf_idade','rf_sozinho','rf_acesso'].forEach(function(name) {
             const el = document.querySelector('input[name="' + name + '"][value="sim"]:checked');
             if (el) { highCount++; criteria.push({ text: el.closest('.rf-item') ? el.closest('.rf-item').querySelector('span').textContent : name, level: 'red' }); }
         });
@@ -641,6 +643,68 @@ document.addEventListener('DOMContentLoaded', function() {
         }).join('');
     }
 
+    document.getElementById('btn-salvar-seguimento').addEventListener('click', async function() {
+        if (!state.patient.id) { alert('Selecione um paciente antes de salvar o seguimento.'); return; }
+        const modalidade  = document.getElementById('seg-modalidade').value;
+        const momento     = document.getElementById('seg-momento').value;
+        const ciclo       = parseInt(document.getElementById('seg-ciclo').value) || null;
+        const enfermeiro  = document.getElementById('seg-enfermeiro').value.trim();
+        const conduta     = document.getElementById('seg-conduta').value;
+        const proxData    = document.getElementById('seg-prox-data').value || null;
+        const necessita   = !!conduta;
+
+        const sintomas = Object.entries(state.segSymptoms)
+            .filter(function(e){ return e[1].grade > 0; })
+            .map(function(e){ return { tipo_sintoma: e[0], grau_ctcae: e[1].grade }; });
+
+        const condutas = Array.from(document.querySelectorAll('#followup-actions-panel .followup-select'))
+            .filter(function(s){ return s.value; })
+            .map(function(s){ return s.closest('.followup-item').querySelector('.followup-text').textContent.trim() + ': ' + s.value; });
+
+        const resumo = condutas.join('\n') || '';
+
+        const btn = document.getElementById('btn-salvar-seguimento');
+        btn.disabled = true;
+        btn.textContent = 'Salvando...';
+        try {
+            await api('POST', '/seguimentos', {
+                id_paciente:              state.patient.id,
+                id_consulta_origem:       state.consultaId || null,
+                modalidade:               modalidade,
+                momento_seguimento:       momento || null,
+                ciclo_referencia:         ciclo,
+                enfermeiro_oncologista:   enfermeiro || null,
+                mini_triagem_resumo:      resumo || null,
+                conduta_realizada:        conduta || null,
+                efetividade:              null,
+                necessita_novo_seguimento: necessita,
+                sintomas:                 sintomas,
+            });
+            btn.textContent = '✓ Seguimento salvo!';
+            btn.style.background = 'var(--green)';
+            if (proxData) {
+                await api('POST', '/consultas/' + (state.consultaId || 0) + '/concluir', {
+                    classificacao_risco_validada: state.riskLevel,
+                    conduta_seguimento_definida: conduta,
+                    tipo_tarefa: conduta ? 'contato_telefonico' : null,
+                    data_prevista_tarefa: proxData ? proxData.split('T')[0] : null,
+                    prioridade_tarefa: 'padrao',
+                    responsavel: enfermeiro,
+                }).catch(function(){});
+            }
+            setTimeout(function() {
+                btn.disabled = false;
+                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salvar Seguimento';
+                btn.style.background = '';
+            }, 3000);
+        } catch(e) {
+            btn.disabled = false;
+            btn.textContent = 'Erro ao salvar. Tente novamente.';
+            btn.style.background = '#DC2626';
+            setTimeout(function(){ btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salvar Seguimento'; btn.style.background = ''; }, 3000);
+        }
+    });
+
     // ── TAREFAS ──
     async function loadTarefas() {
         const tbody = document.getElementById('tasks-table-body');
@@ -683,16 +747,23 @@ document.addEventListener('DOMContentLoaded', function() {
             const pend = tarefas.filter(function(t){ return t.status==='pendente'; }).length;
             const conc = tarefas.filter(function(t){ return t.status==='concluida'; }).length;
             const alt  = tarefas.filter(function(t){ return t.prioridade==='alta'; }).length;
-            const seg  = tarefas.filter(function(t){ return t.status==='agendada'; }).length;
-            if (document.getElementById('ind-tarefas-pend')) document.getElementById('ind-tarefas-pend').textContent = pend;
+            const pend_agen = tarefas.filter(function(t){ return t.status==='agendada'; }).length;
+            if (document.getElementById('ind-tarefas-pend')) document.getElementById('ind-tarefas-pend').textContent = pend + pend_agen;
             if (document.getElementById('ind-tarefas-conc')) document.getElementById('ind-tarefas-conc').textContent = conc;
-            if (document.getElementById('ind-total-atend'))  document.getElementById('ind-total-atend').textContent  = tarefas.length;
             if (document.getElementById('ind-alto-risco'))   document.getElementById('ind-alto-risco').textContent   = alt;
-            if (document.getElementById('ind-seguimentos'))  document.getElementById('ind-seguimentos').textContent  = seg;
         } catch(e) {}
         try {
             const pac = await api('GET', '/pacientes/busca?q=');
             if (document.getElementById('ind-total-atend')) document.getElementById('ind-total-atend').textContent = pac.length || '--';
+        } catch(e) {
+            if (document.getElementById('ind-total-atend')) document.getElementById('ind-total-atend').textContent = '--';
+        }
+        try {
+            if (state.patient.id) {
+                const segs = await api('GET', '/seguimentos/paciente/' + state.patient.id);
+                if (document.getElementById('ind-seguimentos')) document.getElementById('ind-seguimentos').textContent = segs.length;
+                if (document.getElementById('ind-pendencias'))  document.getElementById('ind-pendencias').textContent  = '--';
+            }
         } catch(e) {}
     }
 
