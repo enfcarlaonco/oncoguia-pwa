@@ -31,6 +31,7 @@ const state = {
     plano:      [],
     focusDx:    null,
     focusNic:   null,
+    pendingOrient: {},  // buffer temporário: { nicId: { orientacoes_paciente: [], orientacoes_familia: [] } }
 };
 
 function activateModule(targetId) {
@@ -474,11 +475,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 const dxCodigo = e.currentTarget.dataset.codigo;
                 const dxTitulo = e.currentTarget.dataset.titulo;
                 const dxEnunc  = e.currentTarget.dataset.enunciado;
+
+                // Captura as linhas atualmente selecionadas no painel de orientação (NIC focada)
+                const currentOrientPac = Array.from(document.querySelectorAll('#orient-panel .orient-line.selected[data-type="orientacoes_paciente"]')).map(function(el){ return el.dataset.line; });
+                const currentOrientFam = Array.from(document.querySelectorAll('#orient-panel .orient-line.selected[data-type="orientacoes_familia"]')).map(function(el){ return el.dataset.line; });
+
                 const nicsSelected = Array.from(panel.querySelectorAll('.tag-item.nic.checked')).map(function(t) {
+                    const existingDx  = state.plano.find(function(p){ return p.codigo === dxCodigo; });
+                    const existingNic = existingDx ? existingDx.nics.find(function(n){ return n.id === t.dataset.id; }) : null;
+                    const isFocused   = t.dataset.id === state.focusNic;
+                    const pending     = state.pendingOrient[t.dataset.id] || {};
+                    // Prioridade: DOM (NIC focada) > buffer pendente > estado existente > vazio
+                    const orientPac = isFocused && currentOrientPac.length
+                        ? currentOrientPac
+                        : (pending.orientacoes_paciente && pending.orientacoes_paciente.length
+                            ? pending.orientacoes_paciente
+                            : (existingNic ? (existingNic.orientacoes_paciente || []) : []));
+                    const orientFam = isFocused && currentOrientFam.length
+                        ? currentOrientFam
+                        : (pending.orientacoes_familia && pending.orientacoes_familia.length
+                            ? pending.orientacoes_familia
+                            : (existingNic ? (existingNic.orientacoes_familia  || []) : []));
                     return {
                         id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto,
-                        orientacoes_paciente: [],
-                        orientacoes_familia:  [],
+                        orientacoes_paciente: orientPac,
+                        orientacoes_familia:  orientFam,
                         _pac: (t.dataset.orientPac||'').replace(/&#10;/g,'\n'),
                         _fam: (t.dataset.orientFam||'').replace(/&#10;/g,'\n')
                     };
@@ -539,14 +560,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 const sel = line.classList.contains('selected');
                 line.querySelector('.orient-line-check').textContent = sel ? '✓' : '+';
 
-                const planDx = state.plano.find(function(p){ return p.codigo === state.focusDx; });
-                if (!planDx) return;
-                const planNic = planDx.nics.find(function(n){ return n.id === nicId; });
-                if (!planNic) return;
-                if (!planNic[type]) planNic[type] = [];
-                if (sel) { if (planNic[type].indexOf(lineText) < 0) planNic[type].push(lineText); }
-                else     { planNic[type] = planNic[type].filter(function(l){ return l !== lineText; }); }
-                renderPlanoMontado();
+                const planDx  = state.plano.find(function(p){ return p.codigo === state.focusDx; });
+                const planNic = planDx ? planDx.nics.find(function(n){ return n.id === nicId; }) : null;
+
+                if (planNic) {
+                    // NIC já no plano — atualiza diretamente
+                    if (!planNic[type]) planNic[type] = [];
+                    if (sel) { if (planNic[type].indexOf(lineText) < 0) planNic[type].push(lineText); }
+                    else     { planNic[type] = planNic[type].filter(function(l){ return l !== lineText; }); }
+                    renderPlanoMontado();
+                } else {
+                    // NIC ainda não no plano — salva no buffer temporário
+                    if (!state.pendingOrient[nicId]) state.pendingOrient[nicId] = { orientacoes_paciente: [], orientacoes_familia: [] };
+                    const buf = state.pendingOrient[nicId][type];
+                    if (sel) { if (buf.indexOf(lineText) < 0) buf.push(lineText); }
+                    else     { state.pendingOrient[nicId][type] = buf.filter(function(l){ return l !== lineText; }); }
+                }
             });
         });
     }
@@ -582,6 +611,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.removeDxFromPlan = function(codigo) {
         state.plano = state.plano.filter(function(p){ return p.codigo !== codigo; });
+        // Limpa buffer temporário de orientações pendentes associadas a este DX
+        Object.keys(state.pendingOrient).forEach(function(k){ delete state.pendingOrient[k]; });
         if (state.focusDx === codigo) {
             state.focusDx = null;
             document.getElementById('nic-noc-panel').innerHTML = '<div class="empty-panel"><p>Clique em um diagnóstico</p></div>';
