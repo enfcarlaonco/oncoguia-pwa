@@ -486,12 +486,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     : (pending.orientacoes_familia && pending.orientacoes_familia.length ? pending.orientacoes_familia
                     : (existingDx ? (existingDx.orientacoes_familia || []) : []));
 
-                const nicsSelected = Array.from(panel.querySelectorAll('.tag-item.nic.checked')).map(function(t) {
-                    return { id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto };
+                // Merge: keep existing plan NICs + add newly checked ones (never remove via this button)
+                const nicMap = {};
+                (existingDx ? existingDx.nics : []).forEach(function(n){ nicMap[n.id] = n; });
+                Array.from(panel.querySelectorAll('.tag-item.nic.checked')).forEach(function(t){
+                    nicMap[t.dataset.id] = { id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto };
                 });
-                const nocsSelected = Array.from(panel.querySelectorAll('.tag-item.noc.checked')).map(function(t) {
-                    return { id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto };
+                const nicsSelected = Object.values(nicMap);
+
+                const nocMap = {};
+                (existingDx ? existingDx.nocs : []).forEach(function(n){ nocMap[n.id] = n; });
+                Array.from(panel.querySelectorAll('.tag-item.noc.checked')).forEach(function(t){
+                    nocMap[t.dataset.id] = { id: t.dataset.id, codigo: parseInt(t.dataset.codigo), nome: t.dataset.texto };
                 });
+                const nocsSelected = Object.values(nocMap);
 
                 state.plano = state.plano.filter(function(p){ return p.codigo !== dxCodigo; });
                 state.plano.push({
