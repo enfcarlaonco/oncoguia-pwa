@@ -21,17 +21,18 @@ async function api(method, path, body = null) {
 }
 
 const state = {
-    patient:    { id: null, initials: '', reg: '', ciclo: '', protocol: '' },
-    consultaId: null,
-    ecog:       null,
-    symptoms:   {},
-    segSymptoms:{},
-    riskLevel:  'baixo',
-    nandaCache: [],
-    plano:      [],
-    focusDx:    null,
-    focusNic:   null,
-    pendingOrient: {},  // buffer temporário: { dxCodigo: { orientacoes_paciente: [], orientacoes_familia: [] } }
+    patient:       { id: null, initials: '', reg: '', ciclo: '', protocol: '' },
+    consultaId:    null,
+    ultimaConsulta: null,   // { id_consulta, data_hora, risco, diagnosticos, intervencoes }
+    ecog:          null,
+    symptoms:      {},
+    segSymptoms:   {},
+    riskLevel:     'baixo',
+    nandaCache:    [],
+    plano:         [],
+    focusDx:       null,
+    focusNic:      null,
+    pendingOrient: {},
 };
 
 function activateModule(targetId) {
@@ -85,6 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
         screenSearch.style.display = 'flex'; appMain.style.display = 'none';
         document.getElementById('search-reg').value = '';
         document.getElementById('search-result').style.display = 'none';
+        state.ultimaConsulta = null;
     }
 
     document.getElementById('btn-back-search').addEventListener('click', showSearch);
@@ -135,6 +137,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         const consulta = await api('POST', '/consultas', { id_paciente: state.patient.id, tipo_consulta: 'retorno' });
                         state.consultaId = consulta.id_consulta;
                     } catch(e) {}
+                    // Busca última consulta concluída para contexto do Seguimento
+                    api('GET', '/consultas/paciente/' + state.patient.id + '/ultima-concluida')
+                        .then(function(uc){ state.ultimaConsulta = uc; }).catch(function(){});
                     showApp();
                     activateModule('module-triage');
                 });
@@ -645,6 +650,52 @@ document.addEventListener('DOMContentLoaded', function() {
     // ── SEGUIMENTO ──
     window.buildFollowupPanel = async function buildFollowupPanel() {
         const panel = document.getElementById('followup-actions-panel');
+
+        // ── Exibe contexto da última consulta concluída ──
+        const ctxCard  = document.getElementById('ultima-consulta-ctx');
+        const ctxPlano = document.getElementById('ultima-consulta-plano');
+        const ctxData  = document.getElementById('ultima-consulta-data');
+        const ctxRisco = document.getElementById('ultima-consulta-risco');
+
+        // Tenta buscar se ainda não foi carregado
+        if (!state.ultimaConsulta && state.patient.id) {
+            try { state.ultimaConsulta = await api('GET', '/consultas/paciente/' + state.patient.id + '/ultima-concluida'); }
+            catch(e) {}
+        }
+
+        if (state.ultimaConsulta) {
+            const uc = state.ultimaConsulta;
+            const dataFmt = new Date(uc.data_hora).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+            ctxData.textContent = dataFmt;
+            const ricoMap = { alto: 'Alto Risco', moderado: 'Risco Moderado', baixo: 'Risco Baixo' };
+            const riscoClass = uc.risco === 'alto' ? 'red' : uc.risco === 'moderado' ? 'amber' : 'green';
+            ctxRisco.innerHTML = '<span class="risk-dot-sm ' + riscoClass + '"></span>' + (ricoMap[uc.risco] || uc.risco || '');
+
+            let html = '';
+            if (uc.diagnosticos && uc.diagnosticos.length) {
+                html += '<div style="margin-bottom:8px"><span style="font-size:0.7rem;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.04em">Diagnósticos NANDA</span><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+                uc.diagnosticos.forEach(function(d) {
+                    html += '<span style="background:#EFF6FF;color:#1d4ed8;border-radius:4px;padding:2px 7px;font-size:0.72rem">' + d.titulo_diagnostico + '</span>';
+                });
+                html += '</div></div>';
+            }
+            if (uc.intervencoes && uc.intervencoes.length) {
+                html += '<div><span style="font-size:0.7rem;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.04em">Intervenções NIC</span><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+                uc.intervencoes.forEach(function(n) {
+                    html += '<span style="background:#F0FDF4;color:#15803d;border-radius:4px;padding:2px 7px;font-size:0.72rem">' + n.nome_intervencao + '</span>';
+                });
+                html += '</div></div>';
+            }
+            if (uc.conduta) {
+                html += '<div style="margin-top:8px;font-size:0.75rem;color:var(--text-light)"><strong>Conduta anterior:</strong> ' + uc.conduta + '</div>';
+            }
+            ctxPlano.innerHTML = html || '<span style="font-size:0.78rem;color:var(--text-light)">Plano não registrado nesta consulta.</span>';
+            ctxCard.style.display = 'block';
+        } else {
+            ctxCard.style.display = 'none';
+        }
+
+        // ── Metas do plano de cuidado ──
         let items = [];
         if (state.plano && state.plano.length) {
             state.plano.forEach(function(dx) {
@@ -659,7 +710,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     .concat(plano.resultados_esperados.map(function(r){ return { id: 'noc_'+r.codigo_noc, tipo:'noc', texto: r.nome_resultado||'NOC '+r.codigo_noc }; }));
             } catch(e) {}
         }
-        if (!items.length) { panel.innerHTML = '<div class="empty-state-sm">Complete o Plano SAE para carregar as metas aqui.</div>'; return; }
+        // Fallback: usa intervenções da última consulta concluída
+        if (!items.length && state.ultimaConsulta && state.ultimaConsulta.intervencoes) {
+            items = state.ultimaConsulta.intervencoes.map(function(n){
+                return { id: 'nic_'+n.codigo_nic, tipo: 'nic', texto: n.nome_intervencao };
+            });
+        }
+
+        if (!items.length) { panel.innerHTML = '<div class="empty-state-sm">Complete o Plano de Cuidado SAE para carregar as metas aqui.</div>'; return; }
         panel.innerHTML = items.map(function(item) {
             return '<div class="followup-item"><span class="followup-badge ' + item.tipo + '">' + item.tipo.toUpperCase() + '</span>' +
                 '<span class="followup-text">' + item.texto + (item.dx ? ' <span style="color:var(--text-light);font-size:0.7rem">(' + item.dx + ')</span>' : '') + '</span>' +

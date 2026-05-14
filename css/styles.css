@@ -1369,3 +1369,32 @@ body {
 .orient-section-header.fam + .orient-lines-group .orient-line.selected .orient-line-check {
     background: #f59e0b;
 }
+
+/* ── Breadcrumb de navegação (Plano SAE dentro de Consulta) ── */
+.module-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 2px 14px;
+    font-size: 0.78rem;
+    color: var(--text-light);
+}
+.btn-back-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.76rem;
+    color: var(--blue);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.btn-back-step:hover { background: rgba(23,92,157,0.07); }
+.breadcrumb-sep { color: #cbd5e1; }
+.breadcrumb-current { color: var(--text); font-weight: 500; }
+
+/* ── Utilitários de espaçamento ── */
+.mb-16 { margin-bottom: 16px; }
