@@ -1171,7 +1171,7 @@ body {
     font-size: 0.78rem; padding: 5px 8px;
     border-radius: 4px;
 }
-.plano-item.nic { background: rgba(23,92,157,0.05); color: var(--text-primary); }
+.plano-item.nic { background: rgba(23,92,157,0.05); color: var(--text-primary); flex-direction: column; align-items: stretch; }
 .plano-item.noc { background: rgba(44,167,110,0.05); color: var(--text-primary); }
 .plano-item-badge {
     font-size: 0.62rem; font-weight: 700; padding: 1px 5px;
@@ -1613,3 +1613,69 @@ body {
     text-align: left;
 }
 .btn-outline-choice:hover { border-color: var(--blue); background: #EFF6FF; }
+
+/* ── Nav sub-itens (abas dentro de Pacientes) ── */
+.nav-item-sub {
+    padding-left: 28px;
+    font-size: 0.79rem;
+}
+.nav-item-sub svg { width: 14px; height: 14px; }
+
+/* ── Orient preview no painel 3 ── */
+.orient-preview-text {
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: #334155;
+    background: #F8FAFC;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin: 4px 0 10px;
+    white-space: pre-wrap;
+}
+
+/* ── Dots P/C nas tags NIC ── */
+.orient-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    font-size: 0.6rem;
+    font-weight: 700;
+    margin-left: 3px;
+    line-height: 1;
+}
+.orient-dot.pac { background: #DBEAFE; color: #1D4ED8; }
+.orient-dot.cui { background: #FEF3C7; color: #92400E; }
+
+/* ── Orientações por NIC no plano montado ── */
+.plano-item-main {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.plano-orient-nic {
+    margin: 4px 0 2px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.plano-orient-row {
+    font-size: 0.72rem;
+    line-height: 1.5;
+    border-radius: 4px;
+    padding: 3px 7px;
+}
+.plano-orient-row.pac {
+    background: #EFF6FF;
+    color: #1e40af;
+}
+.plano-orient-row.cui {
+    background: #FFFBEB;
+    color: #92400E;
+}
+.plano-orient-label {
+    font-weight: 700;
+    margin-right: 4px;
+}

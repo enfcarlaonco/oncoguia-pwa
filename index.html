@@ -54,77 +54,6 @@
     </div>
 </div>
 
-<!-- ═══════════════════════════════════════════
-     TELA 2 — LISTA DE PACIENTES
-═══════════════════════════════════════════ -->
-<div id="screen-search" class="patients-screen" style="display:none">
-    <header class="patients-header">
-        <div class="patients-brand">
-            <svg width="28" height="32" viewBox="0 0 104 120" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <linearGradient id="sg0" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2A9DF4"/><stop offset="100%" stop-color="#175C9D"/></linearGradient>
-                    <clipPath id="sc0"><path d="M52,4 L100,18 C100,18 100,88 52,108 C4,88 4,18 4,18 Z"/></clipPath>
-                </defs>
-                <path d="M52,4 L52,108 C52,108 4,88 4,60 L4,18 Z" fill="#2CA76E" clip-path="url(#sc0)"/>
-                <path d="M52,4 L100,18 C100,18 100,88 52,108 Z" fill="url(#sg0)" clip-path="url(#sc0)"/>
-                <path d="M52,4 L100,18 C100,18 100,88 52,108 C4,88 4,18 4,18 Z" fill="none" stroke="#2CA76E" stroke-width="4"/>
-                <rect x="21" y="34" width="11" height="32" rx="2" fill="white"/>
-                <rect x="11" y="44" width="31" height="11" rx="2" fill="white"/>
-                <polyline points="58,62 62,62 65,44 68,82 71,56 74,62 80,62" fill="none" stroke="#00C853" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <div>
-                <div style="font-weight:700;font-size:0.95rem;color:#0F2A44">GuideNurse</div>
-                <div style="font-size:0.62rem;color:#2CA76E;font-weight:600;letter-spacing:.08em">ONCOLOGY</div>
-            </div>
-        </div>
-        <div class="patients-search-bar">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input type="text" id="search-reg" placeholder="Buscar por registro ou iniciais..." class="patients-search-input" autocomplete="off">
-            <button class="btn-search-sm" id="btn-search">Buscar</button>
-        </div>
-        <div class="patients-header-right">
-            <span class="patients-user-badge" id="logged-user-badge"></span>
-            <button class="btn-logout" id="btn-logout">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                Sair
-            </button>
-        </div>
-    </header>
-
-    <div class="patients-body">
-        <div class="patients-title-row">
-            <h2 class="patients-section-title">Pacientes</h2>
-            <button class="btn-primary btn-sm" id="btn-new-patient">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Novo Paciente
-            </button>
-        </div>
-
-        <!-- Resultado de busca (oculto por padrão) -->
-        <div id="search-result" style="display:none;margin-bottom:16px;"></div>
-
-        <!-- Tabela de todos os pacientes -->
-        <div class="patients-table-wrap">
-            <table class="patients-table" id="patients-table">
-                <thead>
-                    <tr>
-                        <th>Iniciais</th>
-                        <th>Nº Registro</th>
-                        <th>Data Nasc.</th>
-                        <th>Sexo</th>
-                        <th>Diagnóstico</th>
-                        <th>Protocolo</th>
-                        <th>Status</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="patients-table-body">
-                    <tr><td colspan="8" class="table-empty">Carregando pacientes...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
 
 <!-- ── MODAL: Dar Seguimento ou Nova Consulta ── -->
 <div id="modal-consulta-choice" class="modal-backdrop" style="display:none">
@@ -186,15 +115,19 @@
             </div>
         </div>
         <nav class="sidebar-nav">
-            <a class="nav-item active" data-target="module-id">
+            <a class="nav-item active" data-target="module-patients">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                <span>Pacientes</span>
+            </a>
+            <a class="nav-item nav-item-sub" data-target="module-id">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
                 <span>Identificação</span>
             </a>
-            <a class="nav-item" data-target="module-triage">
+            <a class="nav-item nav-item-sub" data-target="module-triage">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                 <span>Consulta de Enfermagem</span>
             </a>
-            <a class="nav-item" data-target="module-followup">
+            <a class="nav-item nav-item-sub" data-target="module-followup">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0"/><polyline points="12 8 12 12 14 14"/></svg>
                 <span>Seguimento</span>
             </a>
@@ -216,9 +149,16 @@
                 <span class="risk-dot green"></span>
                 <span class="risk-label" id="risk-label-sidebar">Risco Baixo</span>
             </div>
-            <button class="btn-back-search" id="btn-back-search">
+            <div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap">
+                <span class="patients-user-badge" id="logged-user-badge" style="font-size:0.68rem;padding:3px 9px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+                <button class="btn-logout" id="btn-logout" style="padding:5px 8px">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Sair
+                </button>
+            </div>
+            <button class="btn-back-search" id="btn-back-search" style="margin-top:6px">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-                Trocar paciente
+                Lista de Pacientes
             </button>
         </div>
     </aside>
@@ -245,7 +185,8 @@
                 </div>
             </div>
             <nav class="topbar-tabs">
-                <button class="tab active" data-target="module-id">Identificação</button>
+                <button class="tab active" data-target="module-patients">Pacientes</button>
+                <button class="tab" data-target="module-id">Identificação</button>
                 <button class="tab" data-target="module-triage">Consulta de Enfermagem</button>
                 <button class="tab" data-target="module-followup">Seguimento</button>
                 <button class="tab" data-target="module-tasks">Agenda</button>
@@ -263,8 +204,43 @@
         <!-- CONTENT -->
         <div class="content-area">
 
+            <!-- ── MÓDULO 0: LISTA DE PACIENTES ── -->
+            <section id="module-patients" class="module active">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+                    <div class="patients-search-bar" style="flex:1;min-width:200px;max-width:460px">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        <input type="text" id="search-reg" placeholder="Buscar por registro ou iniciais..." class="patients-search-input" autocomplete="off">
+                        <button class="btn-search-sm" id="btn-search">Buscar</button>
+                    </div>
+                    <button class="btn-primary btn-sm" id="btn-new-patient">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Novo Paciente
+                    </button>
+                </div>
+                <div id="search-result" style="display:none;margin-bottom:16px;"></div>
+                <div class="patients-table-wrap" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0">
+                    <table class="patients-table" id="patients-table">
+                        <thead>
+                            <tr>
+                                <th>Iniciais</th>
+                                <th>Nº Registro</th>
+                                <th>Data Nasc.</th>
+                                <th>Sexo</th>
+                                <th>Diagnóstico</th>
+                                <th>Protocolo</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="patients-table-body">
+                            <tr><td colspan="8" class="table-empty">Faça login para ver a lista de pacientes.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
             <!-- ── MÓDULO 1: IDENTIFICAÇÃO ── -->
-            <section id="module-id" class="module active">
+            <section id="module-id" class="module">
                 <div class="module-grid-2">
                     <div class="card">
                         <div class="card-header">
@@ -679,17 +655,18 @@
                         </div>
                     </div>
 
-                    <!-- PAINEL 3: Orientações ao Paciente e Familiar -->
+                    <!-- PAINEL 3: Orientações vinculadas à NIC selecionada -->
                     <div class="sae-col">
                         <div class="card sae-card">
                             <div class="card-header">
                                 <span class="card-icon green"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-                                <h2 class="card-title">Orientações ao Paciente</h2>
+                                <h2 class="card-title">Orientações</h2>
+                                <span style="font-size:0.65rem;color:var(--text-light);margin-left:auto">vinculadas à NIC</span>
                             </div>
                             <div id="orient-panel">
                                 <div class="empty-panel">
                                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" stroke-width="1.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                                    <p>Selecione uma intervenção NIC</p>
+                                    <p>Clique em uma NIC para ver as orientações</p>
                                 </div>
                             </div>
                         </div>
