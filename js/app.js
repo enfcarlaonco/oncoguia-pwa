@@ -6,6 +6,12 @@
 
 const API_BASE = window.ONCOGUIA_API || 'https://oncoguia-api-production.up.railway.app/api';
 
+// Usuários do sistema — mapeados por nome de seleção
+const USERS = {
+    'Carla Alves':     { id: 1, name: 'Carla Alves',     email: 'enfcarlaonco@gmail.com' },
+    'Danielle Cabral': { id: 2, name: 'Danielle Cabral',  email: 'danielle@guidenurse.com' },
+};
+
 // Orientações ao cuidador por código NIC (Column F da planilha)
 // Fallback local usado quando o banco ainda não tem contexto_uso populado
 const ORIENT_CUIDADOR_MAP = {
@@ -112,7 +118,7 @@ async function api(method, path, body = null) {
 
 const state = {
     patient:        { id: null, initials: '', reg: '', ciclo: '', protocol: '' },
-    loggedUser:     '',
+    currentUser:    null,   // { id, name, email } — preenchido no login
     consultaId:     null,
     ultimaConsulta: null,
     ecog:           null,
@@ -200,15 +206,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     document.getElementById('btn-login').addEventListener('click', function() {
-        const user  = document.getElementById('login-user').value;
-        const senha = document.getElementById('login-senha').value;
-        const err   = document.getElementById('login-error');
+        const userName = document.getElementById('login-user').value;
+        const senha    = document.getElementById('login-senha').value;
+        const err      = document.getElementById('login-error');
+        const user     = USERS[userName];
         if (!user || senha !== 'guidenurse@2026') { err.style.display = 'block'; return; }
         err.style.display = 'none';
-        state.loggedUser = user;
-        document.getElementById('logged-user-badge').textContent = user;
-        // Pré-preenche enfermeiro em todos os campos
-        document.querySelectorAll('#enfermeiro, #seg-enfermeiro').forEach(function(el){ el.value = user; });
+        state.currentUser = user;
+        document.getElementById('logged-user-badge').textContent = user.name;
+        // Propaga nome para displays de sessão (read-only)
+        document.querySelectorAll('.session-user-name-display').forEach(function(el){ el.textContent = user.name; });
+        var enf1 = document.getElementById('enfermeiro-session-name');
+        var enf2 = document.getElementById('seg-enfermeiro-session-name');
+        if (enf1) enf1.textContent = user.name;
+        if (enf2) enf2.textContent = user.name;
         showPatients();
     });
     document.getElementById('login-senha').addEventListener('keydown', function(e){
@@ -216,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.getElementById('btn-logout').addEventListener('click', function() {
-        state.loggedUser = '';
+        state.currentUser = null;
         state.patient = { id: null, initials: '', reg: '', ciclo: '', protocol: '' };
         state.consultaId = null;
         state.ultimaConsulta = null;
@@ -843,7 +854,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const modalidade  = document.getElementById('seg-modalidade').value;
         const momento     = document.getElementById('seg-momento').value;
         const ciclo       = parseInt(document.getElementById('seg-ciclo').value) || null;
-        const enfermeiro  = document.getElementById('seg-enfermeiro').value.trim();
+        const enfermeiro  = state.currentUser ? state.currentUser.name : '';
         const conduta     = document.getElementById('seg-conduta').value;
         const proxData    = document.getElementById('seg-prox-data').value || null;
         const necessita   = !!conduta;
@@ -869,6 +880,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 momento_seguimento:       momento || null,
                 ciclo_referencia:         ciclo,
                 enfermeiro_oncologista:   enfermeiro || null,
+                created_by_user_name:     enfermeiro || null,
                 mini_triagem_resumo:      resumo || null,
                 conduta_realizada:        conduta || null,
                 efetividade:              null,
@@ -981,7 +993,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('btn-concluir').addEventListener('click', async function() {
         const conduta      = (document.getElementById('followup-conduta')?.value || '');
         const followupData = (document.getElementById('followup-data')?.value || '');
-        const enfermeiro   = (document.getElementById('enfermeiro')?.value || '');
+        const enfermeiro   = state.currentUser ? state.currentUser.name : '';
         const tipoConsulta = (document.getElementById('tipo-consulta')?.value || '');
         const peso         = (document.getElementById('peso')?.value || '');
         const altura       = (document.getElementById('altura')?.value || '');
@@ -1064,12 +1076,15 @@ saeText + '\n\n' +
                     else { const d = new Date(); d.setDate(d.getDate() + (conduta.includes('48h')?2:1)); data_prevista_tarefa = d.toISOString().split('T')[0]; }
                 }
                 await api('POST', '/consultas/'+state.consultaId+'/concluir', {
-                    classificacao_risco_validada: state.riskLevel,
-                    texto_copiavel_prontuario:    plainText,
+                    classificacao_risco_validada:  state.riskLevel,
+                    texto_copiavel_prontuario:     plainText,
                     plano_cuidado_resumido:        saePlan.length ? saePlan[0].titulo : '',
                     conduta_seguimento_definida:   conduta,
-                    tipo_tarefa: tipo_tarefa, data_prevista_tarefa: data_prevista_tarefa, prioridade_tarefa: prioridade_tarefa,
-                    responsavel: enfermeiro,
+                    tipo_tarefa:                   tipo_tarefa,
+                    data_prevista_tarefa:          data_prevista_tarefa,
+                    prioridade_tarefa:             prioridade_tarefa,
+                    responsavel:                   enfermeiro,
+                    completed_by_user_name:        enfermeiro,
                 });
             } catch(e) {}
         }

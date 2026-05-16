@@ -1614,6 +1614,31 @@ body {
 }
 .btn-outline-choice:hover { border-color: var(--blue); background: #EFF6FF; }
 
+/* ── Campo de sessão do usuário logado (read-only) ── */
+.session-user-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-radius: var(--r-md);
+    border: 1.5px solid #E2E8F0;
+    background: #F8FAFC;
+    font-size: 0.85rem;
+    color: #1e293b;
+    min-height: 38px;
+}
+.session-user-field svg { color: var(--blue-mid); flex-shrink: 0; }
+.session-user-tag {
+    margin-left: auto;
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 20px;
+    background: #DCFCE7;
+    color: #15803D;
+    white-space: nowrap;
+}
+
 /* ── Nav sub-itens (abas dentro de Pacientes) ── */
 .nav-item-sub {
     padding-left: 28px;
