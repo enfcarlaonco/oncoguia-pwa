@@ -529,7 +529,7 @@ document.addEventListener('DOMContentLoaded', function() {
         clearTimeout(sintomasTimer);
         sintomasTimer = setTimeout(async function() {
             const sintomas = Object.entries(state.symptoms).filter(function(e){ return e[1].grade > 0 || e[1].isRisk; }).map(function(e){ return { tipo_sintoma: e[0], grau_ctcae: e[1].grade, alerta_risco: e[1].isRisk }; });
-            try { await api('PUT', '/consultas/' + state.consultaId + '/sintomas', { sintomas: sintomas, classificacao_risco_automatica: state.riskLevel }); } catch(e) {}
+            try { await api('PUT', '/consultas/' + state.consultaId + '/sintomas', { sintomas: sintomas, classificacao_risco_automatica: state.riskLevel, updated_by_user_name: state.currentUser ? state.currentUser.name : null }); } catch(e) {}
         }, 1500);
     }
 
@@ -765,7 +765,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 await api('PUT', '/consultas/' + state.consultaId + '/plano', {
                     diagnosticos: state.plano.map(function(dx,i){ return { codigo_nanda: dx.codigo, prioridade: i+1, origem: 'selecionado' }; }),
                     intervencoes: state.plano.flatMap(function(dx){ return dx.nics.map(function(n){ return { codigo_nic: n.codigo }; }); }),
-                    resultados_esperados: state.plano.flatMap(function(dx){ return dx.nocs.map(function(n){ return { codigo_noc: n.codigo }; }); })
+                    resultados_esperados: state.plano.flatMap(function(dx){ return dx.nocs.map(function(n){ return { codigo_noc: n.codigo }; }); }),
+                    updated_by_user_name: state.currentUser ? state.currentUser.name : null
                 });
             } catch(err) { console.warn('[autoSavePlano]', err.message); }
         }, 1500);
@@ -934,7 +935,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }).join('');
         tbody.querySelectorAll('.btn-task-done').forEach(function(btn) {
             btn.addEventListener('click', async function() {
-                try { await api('PATCH', '/tarefas/'+btn.dataset.id, { status: 'concluida' }); loadTarefas(); } catch(e) {}
+                try { await api('PATCH', '/tarefas/'+btn.dataset.id, { status: 'concluida', completed_by_user_name: state.currentUser ? state.currentUser.name : null }); loadTarefas(); } catch(e) {}
             });
         });
     }
