@@ -52,6 +52,45 @@ const ORIENT_CUIDADOR_MAP = {
     6550: 'Apoiar nos cuidados com higiene e alimentação.\nEvitar exposição a aglomerações ou pessoas doentes.\nSinal de alerta IMEDIATO: febre ≥ 38 °C, calafrios, fraqueza intensa ou qualquer sinal de infecção.',
     7040: 'Compartilhar responsabilidades.\nApoiar o cuidador principal.\nEvitar sobrecarga em uma única pessoa.\nManter comunicação aberta.',
     7370: 'Alimentação, hidratação e atividade física leve são importantes para a recuperação.',
+    // Entradas complementares (NICs sem mapa original)
+    570:  'Incentivar horários regulares para urinar (a cada 2-3 horas).\nEvitar bebidas com cafeína.\nRegistrar padrão urinário se solicitado pela equipe.',
+    610:  'Manter a bolsa coletora sempre abaixo do nível da bexiga.\nNão dobrar ou obstruir o tubo.\nSinal de alerta: urina turva, com sangue, odor forte ou febre — comunicar à equipe.',
+    740:  'Ajudar a mudar de posição a cada 2 horas.\nObservar vermelhidão ou feridas na pele.\nManter lençóis limpos e secos.\nEstimular movimentos leves no leito.',
+    840:  'Ajudar a mudar a posição do paciente regularmente.\nUsar travesseiros de suporte.\nObservar dor ou desconforto ao movimentar.\nEvitar pressão prolongada em pontos ósseos.',
+    1050: 'Oferecer alimentos na consistência indicada pela equipe.\nNão apressar o paciente.\nObservar tosse ou engasgo durante a refeição.\nComunicar dificuldade para engolir.',
+    1060: 'Oferecer alimentos em pequenas porções e com frequência.\nRespeitar preferências alimentares quando possível.\nAnotar se o paciente recusa comer ou tem piora do apetite.',
+    1240: 'Oferecer alimentos calóricos e nutritivos com frequência.\nIncentivar sem pressionar.\nRegistrar peso quando solicitado.\nComunicar perda de peso significativa à equipe.',
+    1320: 'Acredite quando o paciente relatar dor.\nAjude nos horários dos medicamentos.\nObserve mudanças de comportamento.\nNão espere a dor ficar intensa para pedir ajuda.',
+    1800: 'Ajudar nas atividades do dia a dia sem tirar a autonomia do paciente.\nEstimular a participação nas próprias atividades.\nRespeitar a privacidade e o ritmo do paciente.',
+    1860: 'Posicionar o paciente sentado durante as refeições.\nOferecer alimentos na consistência orientada pela equipe.\nObservar sinais de engasgo.\nNão oferecer líquidos ralos se houver orientação contrária.',
+    2130: 'Sinais de açúcar baixo: tremor, suor frio, tontura, fraqueza — ofereça açúcar ou suco imediatamente.\nTer sempre algo doce acessível.\nComunicar à equipe se o episódio se repetir.',
+    2210: 'Ajudar o paciente a tomar a medicação para dor no horário certo.\nNão esperar a dor piorar para dar o remédio.\nAnotar se a dor melhora após a medicação ou persiste.',
+    2300: 'Ajudar a organizar e administrar os medicamentos nos horários corretos.\nNunca suspender ou alterar doses sem orientação médica.\nAnotar e comunicar qualquer reação inesperada.',
+    3320: 'Manter o dispositivo de oxigênio no rosto do paciente conforme orientado.\nNão fumar ou usar chama próximo ao oxigênio.\nSinal de alerta: falta de ar piora, lábios azulados ou agitação.',
+    3350: 'Observar se o paciente respira com dificuldade ou tem lábios azulados.\nComunicar à equipe imediatamente se isso ocorrer.\nManter o ambiente arejado e sem odores fortes.',
+    3500: 'Ajudar a mudar de posição regularmente.\nUsar colchão e almofadas conforme orientado.\nObservar áreas vermelhas ou doloridas na pele e comunicar à equipe.',
+    3660: 'Não remover curativos sem orientação.\nSinais de infecção: vermelhidão, pus, cheiro ruim, febre — comunicar à equipe.\nManter a área limpa e seca conforme orientado.',
+    3900: 'Manter o paciente aquecido ou fresco conforme necessário.\nVerificar temperatura quando o paciente se sentir mal.\nSinal de alerta: febre ≥ 38°C — procurar atendimento.',
+    4044: 'Chamar ajuda imediatamente se: dor no peito, falta de ar intensa, desmaio ou batimentos irregulares.\nNão deixar o paciente fazer esforço.\nTer o número de emergência sempre acessível.',
+    4150: 'Sinais de alerta: tontura ao levantar, palidez, falta de ar, pulso rápido ou lento.\nAjudar o paciente a se levantar devagar.\nComunicar à equipe qualquer alteração.',
+    5230: 'Ouça sem minimizar as preocupações do paciente.\nEsteja presente nos momentos difíceis.\nIncentivar busca de apoio profissional quando necessário.',
+    5246: 'Seguir as orientações da equipe sobre alimentação.\nAnotar dúvidas para perguntar na próxima consulta.\nComunicar mudanças no apetite ou no peso.',
+    5280: 'Esteja presente e ouça com atenção.\nNão julgue os sentimentos do paciente.\nRespeite o processo emocional — cada pessoa lida de forma diferente.',
+    5400: 'Valorize as conquistas do paciente, mesmo as pequenas.\nEvite comparações ou críticas.\nEstimule atividades que dão prazer e sensação de competência.',
+    5440: 'Mobilize familiares e amigos para dividir os cuidados.\nEvite sobrecarga em uma única pessoa.\nComunicar à equipe se o cuidador principal estiver exausto.',
+    5616: 'Ajudar a entender para que serve cada medicamento.\nAnotar dúvidas para perguntar à equipe.\nNunca suspender a medicação sem orientação médica.',
+    5618: 'Participar das orientações sobre o tratamento.\nAnotar as instruções dadas pela equipe.\nComunicar se o paciente tiver dúvidas ou resistência.',
+    6412: 'EMERGÊNCIA — ligar 192 (SAMU) imediatamente se: inchaço no rosto ou garganta, dificuldade para respirar, urticária intensa.\nNão espere — é uma emergência.',
+    6480: 'Adaptar o domicílio: remova tapetes soltos, melhore a iluminação, deixe o banheiro acessível.\nInstalar barras de apoio se necessário.\nManter o ambiente limpo e arejado.',
+    6482: 'Manter o ambiente silencioso e com temperatura agradável.\nReduzir odores fortes (comida, perfume).\nPerguntar ao paciente o que o faz se sentir melhor.',
+    6530: 'Avisar a equipe sobre vacinas recentes do paciente.\nNão vacinar sem autorização da equipe durante o tratamento.\nComunicar se houve contato com pessoas doentes.',
+    6552: 'Higienizar as mãos com frequência antes de tocar o paciente.\nEvitar exposição a pessoas doentes.\nSinal de alerta IMEDIATO: febre ≥ 38°C, calafrios ou fraqueza intensa.',
+    6650: 'Observe o paciente com atenção e comunique qualquer mudança à equipe.\nAnote horários de sintomas e medicações.\nNão espere piorar para buscar ajuda.',
+    7110: 'Participar ativamente do cuidado é muito importante.\nCompartilhe informações com os outros membros da família.\nPeça ajuda quando necessário.',
+    7140: 'Cuidar do cuidador também é essencial.\nBusque apoio emocional quando necessário.\nConverse com a equipe sobre suas dúvidas e dificuldades.\nPermita-se descansar.',
+    7290: 'Manter a comunicação aberta dentro da família.\nDividir as responsabilidades de cuidado.\nRespeitar as decisões do paciente.\nBuscar apoio quando houver conflitos.',
+    7910: 'Participar das consultas com a equipe multiprofissional.\nAnotar as orientações recebidas.\nComunicar dúvidas entre as consultas à equipe de referência.',
+    8100: 'Seguir as orientações do encaminhamento.\nLevar toda a documentação médica nas consultas.\nComunicar à equipe de referência qualquer dúvida sobre o encaminhamento.',
 };
 
 // Cache em memória: codigo_nic → { orientacao_paciente, orientacao_cuidador }
@@ -550,7 +589,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Popula cache de orientações por NIC (combina API + mapa local para cuidador)
             intervencoes_nic.forEach(function(nic) {
                 const pac = nic.orientacao_paciente_sugerida || nic.orientacao_paciente || '';
-                const cui = nic.contexto_uso || nic.orientacao_cuidador || ORIENT_CUIDADOR_MAP[nic.codigo_nic] || '';
+                // contexto_uso = contexto clínico para enfermagem, não orientação ao cuidador
+                // A orientação ao cuidador vem do ORIENT_CUIDADOR_MAP (hardcoded) até a migração correta rodar no banco
+                const cui = ORIENT_CUIDADOR_MAP[nic.codigo_nic] || '';
                 nicDataCache[nic.codigo_nic] = { orientacao_paciente: pac, orientacao_cuidador: cui };
             });
 
