@@ -146,9 +146,10 @@ function activateModule(targetId) {
     if (targetId === 'module-patients')   loadPatientsList();
     if (targetId === 'module-nanda')      loadNanda(document.getElementById('dx-search') ? document.getElementById('dx-search').value : '');
     if (targetId === 'module-followup')   buildFollowupPanel();
-    if (targetId === 'module-tasks')      loadTarefas();
-    if (targetId === 'module-indicators') loadIndicators();
-    if (targetId === 'module-evolution')  loadEvolution();
+    if (targetId === 'module-tasks')       loadTarefas();
+    if (targetId === 'module-pendencias')  loadPendencias();
+    if (targetId === 'module-indicators')  loadIndicators();
+    if (targetId === 'module-evolution')   loadEvolution();
 }
 
 // Exibe orientações de uma NIC no painel 3 (preview, não editável)
@@ -1066,6 +1067,171 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch(e) { erro.textContent = 'Erro: ' + e.message; erro.style.display = 'block'; }
     });
 
+    // ── PENDÊNCIAS ──
+    var PEND_STATUS_COLOR = {
+        aberta:           { text:'#92400e', bg:'#fef3c7' },
+        em_acompanhamento:{ text:'#1e40af', bg:'#dbeafe' },
+        resolvida:        { text:'#14532d', bg:'#dcfce7' },
+        cancelada:        { text:'#374151', bg:'#f1f5f9' }
+    };
+    var PEND_STATUS_LABEL = {
+        aberta:'Aberta', em_acompanhamento:'Acompanhamento', resolvida:'Resolvida', cancelada:'Cancelada'
+    };
+    var PEND_CAT_LABEL = {
+        clinica:'Clínica', medicamentosa:'Medicamentosa', social:'Social',
+        administrativa:'Administrativa', laboratorial:'Laboratorial',
+        psicologica:'Psicológica', nutricional:'Nutricional',
+        adesao:'Adesão', acesso_rede:'Acesso à Rede'
+    };
+
+    async function loadPendencias(url) {
+        var tbody = document.getElementById('pendencias-table-body');
+        tbody.innerHTML = '<tr><td colspan="8" class="table-empty">Carregando...</td></tr>';
+        try { renderPendencias(await api('GET', url || '/pendencias')); }
+        catch(e) { tbody.innerHTML = '<tr><td colspan="8" class="table-empty" style="color:#DC2626">Erro ao carregar.</td></tr>'; }
+    }
+
+    function renderPendencias(lista) {
+        var tbody = document.getElementById('pendencias-table-body');
+        if (!lista.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="table-empty">Nenhuma pendência encontrada.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = lista.map(function(p) {
+            var pr     = p.prioridade || 'moderada';
+            var prStyle = 'background:' + (PRIOR_BG[pr]||'#f1f5f9') + ';color:' + (PRIOR_COLOR[pr]||'#6B7280') +
+                          ';font-weight:700;font-size:0.72rem;padding:2px 8px;border-radius:20px;white-space:nowrap';
+            var st     = p.status || 'aberta';
+            var stInfo = PEND_STATUS_COLOR[st] || { text:'#374151', bg:'#f1f5f9' };
+            var stStyle = 'background:' + stInfo.bg + ';color:' + stInfo.text +
+                          ';font-size:0.72rem;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap';
+            var dtFmt  = p.data_abertura
+                ? new Date(p.data_abertura).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit'})
+                : (p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '—');
+            var desc   = p.descricao || '—';
+            var descCell = '<span title="' + desc.replace(/"/g,'') + '" style="font-size:0.8rem;cursor:help">' +
+                (desc.length > 45 ? desc.substring(0,45)+'…' : desc) + '</span>';
+            var catLabel = PEND_CAT_LABEL[p.categoria] || p.categoria || '—';
+            var resp   = p.created_by_user_name || '—';
+            var ativo  = st !== 'resolvida' && st !== 'cancelada';
+            var acao = ativo
+                ? '<button class="btn-task-done" data-id="' + p.id_pendencia +
+                  '" data-pac="' + (p.iniciais_nome||'') + '" data-cat="' + catLabel +
+                  '" data-pr="' + (PRIOR_LABEL[pr]||pr) + '" data-desc="' + desc.replace(/"/g,'').substring(0,60) +
+                  '" style="font-size:0.75rem;padding:4px 10px;background:#2CA76E">Resolver</button>'
+                : '<span style="font-size:0.72rem;color:#94a3b8">' + (p.resolved_by_user_name || p.created_by_user_name || '—') + '</span>';
+            return '<tr>' +
+                '<td><span style="' + prStyle + '">' + (PRIOR_LABEL[pr]||pr) + '</span></td>' +
+                '<td><span style="' + stStyle + '">' + (PEND_STATUS_LABEL[st]||st) + '</span></td>' +
+                '<td style="font-weight:600;font-size:0.83rem">' + (p.iniciais_nome||'—') + '</td>' +
+                '<td style="font-size:0.82rem">' + catLabel + '</td>' +
+                '<td>' + descCell + '</td>' +
+                '<td style="font-size:0.8rem;white-space:nowrap">' + dtFmt + '</td>' +
+                '<td style="font-size:0.8rem">' + resp + '</td>' +
+                '<td>' + acao + '</td>' +
+                '</tr>';
+        }).join('');
+        tbody.querySelectorAll('.btn-task-done').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.getElementById('rp-pendencia-id').value = btn.dataset.id;
+                document.getElementById('rp-conduta').value = '';
+                document.getElementById('rp-erro').style.display = 'none';
+                document.getElementById('rp-info').textContent =
+                    'Paciente: ' + btn.dataset.pac + ' | Categoria: ' + btn.dataset.cat +
+                    ' | Prioridade: ' + btn.dataset.pr + '\n' + btn.dataset.desc;
+                document.getElementById('resolver-pendencia-modal').style.display = 'flex';
+            });
+        });
+    }
+
+    // Filtros de pendências
+    document.querySelectorAll('#module-pendencias .filter-chip').forEach(function(chip) {
+        chip.addEventListener('click', async function() {
+            document.querySelectorAll('#module-pendencias .filter-chip').forEach(function(c){ c.classList.remove('active'); });
+            chip.classList.add('active');
+            document.getElementById('pend-cat-filter').value = '';
+            var f = chip.dataset.filter;
+            var url = '/pendencias';
+            if (f === 'aberta')           url = '/pendencias?status=aberta';
+            if (f === 'em_acompanhamento') url = '/pendencias?status=em_acompanhamento';
+            if (f === 'resolvida')         url = '/pendencias?status=resolvida';
+            if (f === 'critica')           url = '/pendencias?prioridade=critica';
+            await loadPendencias(url);
+        });
+    });
+
+    document.getElementById('pend-cat-filter').addEventListener('change', async function() {
+        var cat = this.value;
+        document.querySelectorAll('#module-pendencias .filter-chip').forEach(function(c){ c.classList.remove('active'); });
+        document.querySelector('#module-pendencias .filter-chip[data-filter="todas"]').classList.add('active');
+        await loadPendencias(cat ? '/pendencias?categoria=' + cat : '/pendencias');
+    });
+
+    // Modal: Nova Pendência
+    document.getElementById('btn-nova-pendencia').addEventListener('click', function() {
+        document.getElementById('np-paciente-display').value =
+            state.patient && state.patient.initials ? state.patient.initials + ' (' + state.patient.reg + ')' : '';
+        document.getElementById('np-paciente-id').value  = state.patient ? (state.patient.id || '') : '';
+        document.getElementById('np-consulta-id').value  = state.consultaId || '';
+        document.getElementById('np-categoria').value    = '';
+        document.getElementById('np-prioridade').value   = 'moderada';
+        document.getElementById('np-descricao').value    = '';
+        document.getElementById('np-erro').style.display = 'none';
+        var consultaInfo = document.getElementById('np-consulta-info');
+        if (state.consultaId) {
+            document.getElementById('np-consulta-texto').textContent = 'Vinculada à consulta atual (ID: ' + state.consultaId + ')';
+            consultaInfo.style.display = 'block';
+        } else {
+            consultaInfo.style.display = 'none';
+        }
+        document.getElementById('nova-pendencia-modal').style.display = 'flex';
+    });
+    document.getElementById('close-nova-pendencia-modal').addEventListener('click', function() {
+        document.getElementById('nova-pendencia-modal').style.display = 'none';
+    });
+    document.getElementById('btn-salvar-nova-pendencia').addEventListener('click', async function() {
+        var cat   = document.getElementById('np-categoria').value;
+        var desc  = document.getElementById('np-descricao').value.trim();
+        var pacId = parseInt(document.getElementById('np-paciente-id').value);
+        var erro  = document.getElementById('np-erro');
+        if (!cat)  { erro.textContent = 'Selecione a categoria.'; erro.style.display = 'block'; return; }
+        if (!desc) { erro.textContent = 'Informe a descrição da pendência.'; erro.style.display = 'block'; return; }
+        if (!pacId){ erro.textContent = 'Nenhum paciente selecionado. Abra um paciente antes.'; erro.style.display = 'block'; return; }
+        if (!state.currentUser) { erro.textContent = 'Usuário não autenticado.'; erro.style.display = 'block'; return; }
+        try {
+            await api('POST', '/pendencias', {
+                id_paciente:          pacId,
+                id_consulta_origem:   document.getElementById('np-consulta-id').value || null,
+                categoria:            cat,
+                descricao:            desc,
+                prioridade:           document.getElementById('np-prioridade').value,
+                created_by_user_name: state.currentUser.name
+            });
+            document.getElementById('nova-pendencia-modal').style.display = 'none';
+            loadPendencias();
+        } catch(e) { erro.textContent = 'Erro ao criar pendência: ' + e.message; erro.style.display = 'block'; }
+    });
+
+    // Modal: Resolver Pendência
+    document.getElementById('close-resolver-pendencia-modal').addEventListener('click', function() {
+        document.getElementById('resolver-pendencia-modal').style.display = 'none';
+    });
+    document.getElementById('btn-confirmar-resolucao').addEventListener('click', async function() {
+        var id      = document.getElementById('rp-pendencia-id').value;
+        var conduta = document.getElementById('rp-conduta').value.trim();
+        var erro    = document.getElementById('rp-erro');
+        if (!conduta) { erro.textContent = 'Informe a conduta realizada.'; erro.style.display = 'block'; return; }
+        if (!state.currentUser) { erro.textContent = 'Usuário não autenticado.'; erro.style.display = 'block'; return; }
+        try {
+            await api('PUT', '/pendencias/' + id + '/resolver', {
+                conduta_atual:        conduta,
+                resolved_by_user_name: state.currentUser.name
+            });
+            document.getElementById('resolver-pendencia-modal').style.display = 'none';
+            loadPendencias();
+        } catch(e) { erro.textContent = 'Erro: ' + e.message; erro.style.display = 'block'; }
+    });
+
     // ── INDICADORES ──
     async function loadIndicators() {
         try {
@@ -1088,8 +1254,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (state.patient.id) {
                 const segs = await api('GET', '/seguimentos/paciente/' + state.patient.id);
                 if (document.getElementById('ind-seguimentos')) document.getElementById('ind-seguimentos').textContent = segs.length;
-                if (document.getElementById('ind-pendencias'))  document.getElementById('ind-pendencias').textContent  = '--';
             }
+        } catch(e) {}
+        try {
+            const pends = await api('GET', '/pendencias?status=aberta');
+            if (document.getElementById('ind-pendencias')) document.getElementById('ind-pendencias').textContent = pends.length;
         } catch(e) {}
     }
 
