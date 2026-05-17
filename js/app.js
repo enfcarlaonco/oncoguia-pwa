@@ -1008,6 +1008,139 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch(e) {}
     }
 
+    // ── RELATÓRIO CLÍNICO ──
+    async function gerarRelatorio() {
+        if (!state.consultaId) { alert('Nenhuma consulta aberta.'); return; }
+        document.getElementById('relatorio-modal').style.display = 'flex';
+        document.getElementById('relatorio-text').value = 'Carregando dados do banco...';
+        try {
+            var d = await api('GET', '/consultas/' + state.consultaId);
+            var c = d.consulta;
+            var agora     = new Date().toLocaleString('pt-BR');
+            var dtConsulta = c.data_hora ? new Date(c.data_hora).toLocaleString('pt-BR') : '—';
+            var paciente  = (state.patient && state.patient.initials) ? state.patient.initials : '—';
+            var registro  = (state.patient && state.patient.reg)      ? state.patient.reg      : '—';
+            var enfermeiro = c.completed_by_user_name || c.updated_by_user_name || '—';
+            var tipo      = c.tipo_consulta ? (c.tipo_consulta.charAt(0).toUpperCase() + c.tipo_consulta.slice(1)) : '—';
+            var status    = c.status_consulta || '—';
+            var riscAuto  = c.classificacao_risco_automatica || '—';
+            var riscVal   = c.classificacao_risco_validada   || '—';
+            var sep = '─'.repeat(78);
+            var txt = '';
+
+            txt += '═'.repeat(78) + '\n';
+            txt += '                       CONSULTA DE ENFERMAGEM\n';
+            txt += '      GESTÃO DO CUIDADO ONCOLÓGICO — AMBULATÓRIO BORGES DA COSTA\n';
+            txt += '═'.repeat(78) + '\n\n';
+            txt += 'Paciente   : ' + paciente + '\n';
+            txt += 'Registro   : ' + registro + '\n';
+            txt += 'Data/Hora  : ' + dtConsulta + '\n';
+            txt += 'Tipo       : ' + tipo + '\n';
+            txt += 'Status     : ' + status + '\n';
+            txt += 'Enfermeiro : ' + enfermeiro + '\n\n';
+
+            txt += sep + '\n1. CLASSIFICAÇÃO DE RISCO\n' + sep + '\n\n';
+            txt += '  Automática : ' + riscAuto + '\n';
+            txt += '  Validada   : ' + riscVal  + '\n\n';
+
+            txt += sep + '\n2. TRIAGEM CTCAE\n' + sep + '\n\n';
+            if (d.sintomas && d.sintomas.length) {
+                d.sintomas.forEach(function(s) {
+                    txt += '  • ' + s.tipo_sintoma + ' — Grau ' + s.grau_ctcae;
+                    if (s.alerta_risco) txt += ' [ALERTA]';
+                    if (s.observacao)   txt += '\n    ' + s.observacao;
+                    txt += '\n';
+                });
+            } else { txt += '  Sem sintomas registrados.\n'; }
+            txt += '\n';
+
+            txt += sep + '\n3. DIAGNÓSTICOS DE ENFERMAGEM (NANDA)\n' + sep + '\n\n';
+            if (d.diagnosticos && d.diagnosticos.length) {
+                d.diagnosticos.forEach(function(dx, i) {
+                    txt += '  ' + (i + 1) + '. [' + dx.codigo_nanda + '] ' + dx.titulo_diagnostico + '\n';
+                });
+            } else { txt += '  Sem diagnósticos registrados.\n'; }
+            txt += '\n';
+
+            txt += sep + '\n4. INTERVENÇÕES DE ENFERMAGEM (NIC)\n' + sep + '\n\n';
+            if (d.intervencoes && d.intervencoes.length) {
+                d.intervencoes.forEach(function(n) {
+                    txt += '  • [' + n.codigo_nic + '] ' + n.nome_intervencao + '\n';
+                });
+            } else { txt += '  Sem intervenções registradas.\n'; }
+            txt += '\n';
+
+            txt += sep + '\n5. RESULTADOS ESPERADOS (NOC)\n' + sep + '\n\n';
+            if (d.resultados_esperados && d.resultados_esperados.length) {
+                d.resultados_esperados.forEach(function(r) {
+                    txt += '  • [' + r.codigo_noc + '] ' + r.nome_resultado + '\n';
+                });
+            } else { txt += '  Sem resultados esperados registrados.\n'; }
+            txt += '\n';
+
+            txt += sep + '\n6. ORIENTAÇÕES AO PACIENTE\n' + sep + '\n\n';
+            var orPac = (d.orientacoes || []).filter(function(o){ return o.tipo === 'paciente'; });
+            if (orPac.length) {
+                orPac.forEach(function(o) {
+                    var nicObj = (d.intervencoes || []).find(function(n){ return n.codigo_nic === o.codigo_nic; });
+                    txt += '  [' + o.codigo_nic + '] ' + (nicObj ? nicObj.nome_intervencao : '') + '\n';
+                    o.texto.split('\n').forEach(function(l){ if (l.trim()) txt += '  ' + l + '\n'; });
+                    txt += '\n';
+                });
+            } else { txt += '  Sem orientações ao paciente registradas.\n\n'; }
+
+            txt += sep + '\n7. ORIENTAÇÕES AO FAMILIAR/CUIDADOR\n' + sep + '\n\n';
+            var orCui = (d.orientacoes || []).filter(function(o){ return o.tipo === 'cuidador'; });
+            if (orCui.length) {
+                orCui.forEach(function(o) {
+                    var nicObj = (d.intervencoes || []).find(function(n){ return n.codigo_nic === o.codigo_nic; });
+                    txt += '  [' + o.codigo_nic + '] ' + (nicObj ? nicObj.nome_intervencao : '') + '\n';
+                    o.texto.split('\n').forEach(function(l){ if (l.trim()) txt += '  ' + l + '\n'; });
+                    txt += '\n';
+                });
+            } else { txt += '  Sem orientações ao cuidador registradas.\n\n'; }
+
+            txt += sep + '\n8. PLANO DE SEGUIMENTO\n' + sep + '\n\n';
+            if (d.plano_seguimento && d.plano_seguimento.length) {
+                d.plano_seguimento.forEach(function(p) {
+                    txt += '  • ' + (p.tipo_seguimento || '—');
+                    if (p.data_prevista) txt += ' — ' + new Date(p.data_prevista).toLocaleDateString('pt-BR');
+                    if (p.responsavel)   txt += ' | Responsável: ' + p.responsavel;
+                    if (p.observacao)    txt += '\n    ' + p.observacao;
+                    txt += '\n';
+                });
+            } else { txt += '  Sem plano de seguimento registrado.\n'; }
+            txt += '\n';
+
+            txt += '═'.repeat(78) + '\n';
+            txt += 'Relatório gerado em: ' + agora + '\n';
+            txt += 'Usuário: ' + (state.currentUser ? state.currentUser.name : '—') + '\n';
+            txt += 'Enfermeiro Gestor do Cuidado — Borges da Costa — Ambulatório de Quimioterapia\n';
+            txt += '═'.repeat(78) + '\n';
+
+            document.getElementById('relatorio-text').value = txt;
+        } catch(err) {
+            console.error('[gerarRelatorio]', err.message);
+            document.getElementById('relatorio-text').value = 'Erro ao gerar relatório: ' + err.message;
+        }
+    }
+
+    document.getElementById('btn-relatorio').addEventListener('click', gerarRelatorio);
+    document.getElementById('close-relatorio-modal').addEventListener('click', function() {
+        document.getElementById('relatorio-modal').style.display = 'none';
+    });
+    document.getElementById('regenerar-relatorio').addEventListener('click', gerarRelatorio);
+    document.getElementById('copy-relatorio').addEventListener('click', function(e) {
+        var ta = document.getElementById('relatorio-text');
+        ta.select();
+        document.execCommand('copy');
+        var btn = e.currentTarget;
+        btn.textContent = '✓ Copiado!';
+        setTimeout(function() {
+            btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copiar Relatório';
+        }, 3000);
+    });
+
     // ── CONCLUIR ──
     document.getElementById('btn-concluir').addEventListener('click', async function() {
         const conduta      = (document.getElementById('followup-conduta')?.value || '');
