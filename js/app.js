@@ -932,38 +932,138 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // ── TAREFAS ──
-    async function loadTarefas() {
-        const tbody = document.getElementById('tasks-table-body');
-        tbody.innerHTML = '<tr><td colspan="7" class="table-empty">Carregando...</td></tr>';
-        try { renderTarefas(await api('GET', '/tarefas')); }
-        catch(e) { tbody.innerHTML = '<tr><td colspan="7" class="table-empty" style="color:#DC2626">Erro ao carregar.</td></tr>'; }
+    var PRIOR_LABEL = { critica:'Crítica', alta:'Alta', moderada:'Moderada', baixa:'Baixa', padrao:'Padrão' };
+    var PRIOR_COLOR = { critica:'#7c1d1d', alta:'#DC2626', moderada:'#D97706', baixa:'#2563EB', padrao:'#6B7280' };
+    var PRIOR_BG    = { critica:'#fee2e2', alta:'#fee2e2', moderada:'#fef3c7', baixa:'#dbeafe', padrao:'#f1f5f9' };
+
+    async function loadTarefas(url) {
+        var tbody = document.getElementById('tasks-table-body');
+        tbody.innerHTML = '<tr><td colspan="8" class="table-empty">Carregando...</td></tr>';
+        try { renderTarefas(await api('GET', url || '/tarefas')); }
+        catch(e) { tbody.innerHTML = '<tr><td colspan="8" class="table-empty" style="color:#DC2626">Erro ao carregar.</td></tr>'; }
     }
 
     function renderTarefas(tarefas) {
-        const tbody = document.getElementById('tasks-table-body');
-        if (!tarefas.length) { tbody.innerHTML = '<tr><td colspan="7" class="table-empty">Nenhuma tarefa na agenda.</td></tr>'; return; }
+        var tbody = document.getElementById('tasks-table-body');
+        if (!tarefas.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="table-empty">Nenhuma tarefa encontrada.</td></tr>';
+            return;
+        }
         tbody.innerHTML = tarefas.map(function(t) {
-            return '<tr><td><span class="status-pill ' + t.status + '">' + t.status + '</span></td>' +
-                '<td style="font-weight:600">' + (t.iniciais_nome||'---') + '</td>' +
-                '<td>' + (t.tipo_tarefa||'').replace(/_/g,' ') + '</td>' +
-                '<td><span class="priority-badge ' + t.prioridade + '">' + (t.prioridade==='alta'?'Alta':'Padrão') + '</span></td>' +
-                '<td>' + (t.data_prevista ? new Date(t.data_prevista).toLocaleDateString('pt-BR') : 'Hoje') + '</td>' +
-                '<td>' + (t.responsavel||'---') + '</td>' +
-                '<td><button class="btn-task-done" data-id="' + t.id_tarefa + '">Concluir</button></td></tr>';
+            var pr    = t.prioridade || 'padrao';
+            var prStyle = 'background:' + (PRIOR_BG[pr]||'#f1f5f9') + ';color:' + (PRIOR_COLOR[pr]||'#6B7280') +
+                          ';font-weight:700;font-size:0.72rem;padding:2px 8px;border-radius:20px;white-space:nowrap';
+            var stCls = t.status === 'concluida' ? '#15803d' : t.status === 'cancelada' ? '#6B7280' : '#D97706';
+            var stStyle = 'font-size:0.72rem;font-weight:600;color:' + stCls;
+            var dtFmt  = t.data_prevista
+                ? new Date(t.data_prevista).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})
+                : '—';
+            var tipo   = (t.tipo_tarefa || '').replace(/_/g, ' ');
+            var result = t.conduta_realizada
+                ? '<span title="' + t.conduta_realizada.replace(/"/g,'') + '" style="font-size:0.72rem;color:#374151;cursor:help">' +
+                  (t.conduta_realizada.length > 35 ? t.conduta_realizada.substring(0,35)+'…' : t.conduta_realizada) + '</span>'
+                : '<span style="color:#94a3b8;font-size:0.72rem">—</span>';
+            var acao = t.status !== 'concluida' && t.status !== 'cancelada'
+                ? '<button class="btn-task-done" data-id="' + t.id_tarefa + '" data-tipo="' + tipo +
+                  '" data-pac="' + (t.iniciais_nome||'') + '" data-pr="' + (PRIOR_LABEL[pr]||pr) +
+                  '" style="font-size:0.75rem;padding:4px 10px">Concluir</button>'
+                : '<span style="font-size:0.72rem;color:#94a3b8">' + (t.completed_by_user_name || '—') + '</span>';
+            return '<tr>' +
+                '<td><span style="' + prStyle + '">' + (PRIOR_LABEL[pr] || pr) + '</span></td>' +
+                '<td><span style="' + stStyle + '">' + (t.status || '—') + '</span></td>' +
+                '<td style="font-weight:600;font-size:0.83rem">' + (t.iniciais_nome || '—') + '</td>' +
+                '<td style="font-size:0.82rem">' + tipo + '</td>' +
+                '<td style="font-size:0.8rem;white-space:nowrap">' + dtFmt + '</td>' +
+                '<td style="font-size:0.8rem">' + (t.responsavel || t.created_by_user_name || '—') + '</td>' +
+                '<td>' + result + '</td>' +
+                '<td>' + acao + '</td>' +
+                '</tr>';
         }).join('');
         tbody.querySelectorAll('.btn-task-done').forEach(function(btn) {
-            btn.addEventListener('click', async function() {
-                try { await api('PATCH', '/tarefas/'+btn.dataset.id, { status: 'concluida', completed_by_user_name: state.currentUser ? state.currentUser.name : null }); loadTarefas(); } catch(e) {}
+            btn.addEventListener('click', function() {
+                document.getElementById('ct-tarefa-id').value = btn.dataset.id;
+                document.getElementById('ct-resultado').value = '';
+                document.getElementById('ct-efetividade').value = '';
+                document.getElementById('ct-erro').style.display = 'none';
+                document.getElementById('ct-info').textContent =
+                    'Paciente: ' + btn.dataset.pac + ' | Tipo: ' + btn.dataset.tipo + ' | Prioridade: ' + btn.dataset.pr;
+                document.getElementById('concluir-tarefa-modal').style.display = 'flex';
             });
         });
     }
 
-    document.querySelectorAll('.filter-chip').forEach(function(chip) {
+    // Filtros de tarefas
+    document.querySelectorAll('#module-tasks .filter-chip').forEach(function(chip) {
         chip.addEventListener('click', async function() {
-            document.querySelectorAll('.filter-chip').forEach(function(c){ c.classList.remove('active'); });
+            document.querySelectorAll('#module-tasks .filter-chip').forEach(function(c){ c.classList.remove('active'); });
             chip.classList.add('active');
-            try { renderTarefas(await api('GET', chip.dataset.filter === 'todas' ? '/tarefas' : '/tarefas?status='+chip.dataset.filter)); } catch(e) {}
+            var f = chip.dataset.filter;
+            var url = '/tarefas';
+            if (f === 'pendente')  url = '/tarefas?status=pendente';
+            if (f === 'concluida') url = '/tarefas?status=concluida';
+            if (f === 'hoje')      url = '/tarefas?periodo=hoje';
+            if (f === 'proximas')  url = '/tarefas?periodo=proximas';
+            try { renderTarefas(await api('GET', url)); } catch(e) {}
         });
+    });
+
+    // Modal: Nova Tarefa
+    document.getElementById('btn-nova-tarefa').addEventListener('click', function() {
+        document.getElementById('nt-paciente-display').value =
+            state.patient && state.patient.initials ? state.patient.initials + ' (' + state.patient.reg + ')' : '';
+        document.getElementById('nt-paciente-id').value = state.patient ? (state.patient.id || '') : '';
+        document.getElementById('nt-tipo').value = '';
+        document.getElementById('nt-prioridade').value = 'moderada';
+        document.getElementById('nt-data').value = '';
+        document.getElementById('nt-descricao').value = '';
+        document.getElementById('nt-erro').style.display = 'none';
+        document.getElementById('nova-tarefa-modal').style.display = 'flex';
+    });
+    document.getElementById('close-nova-tarefa-modal').addEventListener('click', function() {
+        document.getElementById('nova-tarefa-modal').style.display = 'none';
+    });
+    document.getElementById('btn-salvar-nova-tarefa').addEventListener('click', async function() {
+        var tipo   = document.getElementById('nt-tipo').value;
+        var pacId  = parseInt(document.getElementById('nt-paciente-id').value);
+        var erro   = document.getElementById('nt-erro');
+        if (!tipo)  { erro.textContent = 'Selecione o tipo de tarefa.'; erro.style.display = 'block'; return; }
+        if (!pacId) { erro.textContent = 'Nenhum paciente selecionado. Abra um paciente antes de criar a tarefa.'; erro.style.display = 'block'; return; }
+        if (!state.currentUser) { erro.textContent = 'Usuário não autenticado.'; erro.style.display = 'block'; return; }
+        try {
+            await api('POST', '/tarefas', {
+                id_paciente:          pacId,
+                id_consulta_origem:   state.consultaId || null,
+                tipo_tarefa:          tipo,
+                descricao:            document.getElementById('nt-descricao').value || null,
+                prioridade:           document.getElementById('nt-prioridade').value,
+                data_prevista:        document.getElementById('nt-data').value || null,
+                created_by_user_name: state.currentUser.name
+            });
+            document.getElementById('nova-tarefa-modal').style.display = 'none';
+            loadTarefas();
+        } catch(e) { erro.textContent = 'Erro ao criar tarefa: ' + e.message; erro.style.display = 'block'; }
+    });
+
+    // Modal: Concluir Tarefa
+    document.getElementById('close-concluir-tarefa-modal').addEventListener('click', function() {
+        document.getElementById('concluir-tarefa-modal').style.display = 'none';
+    });
+    document.getElementById('btn-confirmar-conclusao').addEventListener('click', async function() {
+        var id       = document.getElementById('ct-tarefa-id').value;
+        var resultado = document.getElementById('ct-resultado').value.trim();
+        var efet     = document.getElementById('ct-efetividade').value;
+        var erro     = document.getElementById('ct-erro');
+        if (!resultado) { erro.textContent = 'Informe o resultado da intervenção.'; erro.style.display = 'block'; return; }
+        if (!state.currentUser) { erro.textContent = 'Usuário não autenticado.'; erro.style.display = 'block'; return; }
+        try {
+            await api('PUT', '/tarefas/' + id + '/concluir', {
+                resultado:             resultado,
+                efetividade:           efet || null,
+                completed_by_user_name: state.currentUser.name
+            });
+            document.getElementById('concluir-tarefa-modal').style.display = 'none';
+            loadTarefas();
+        } catch(e) { erro.textContent = 'Erro: ' + e.message; erro.style.display = 'block'; }
     });
 
     // ── INDICADORES ──
