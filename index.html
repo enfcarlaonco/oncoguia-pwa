@@ -115,6 +115,10 @@
             </div>
         </div>
         <nav class="sidebar-nav">
+            <a class="nav-item" data-target="module-painel">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span>Painel</span>
+            </a>
             <a class="nav-item active" data-target="module-patients">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
                 <span>Pacientes</span>
@@ -189,6 +193,7 @@
                 </div>
             </div>
             <nav class="topbar-tabs">
+                <button class="tab" data-target="module-painel">Painel</button>
                 <button class="tab active" data-target="module-patients">Pacientes</button>
                 <button class="tab" data-target="module-id">Identificação</button>
                 <button class="tab" data-target="module-triage">Consulta de Enfermagem</button>
@@ -212,6 +217,80 @@
 
         <!-- CONTENT -->
         <div class="content-area">
+
+            <!-- ── MÓDULO: PAINEL DO ENFERMEIRO ── -->
+            <section id="module-painel" class="module">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap">
+                    <h2 style="font-size:1rem;font-weight:700;color:#0F2A44;margin:0">Painel do Enfermeiro</h2>
+                    <span style="color:#94a3b8;font-size:0.8rem">Visão operacional diária</span>
+                    <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+                        <label style="font-size:0.8rem;font-weight:600;color:#475569">Data</label>
+                        <input type="date" id="painel-data" class="select-field" style="width:160px;padding:6px 10px">
+                        <button class="btn-primary btn-sm" id="btn-atualizar-painel">Atualizar</button>
+                    </div>
+                </div>
+                <div id="painel-alertas" style="display:none;margin-bottom:16px"></div>
+                <div class="indicators-grid" style="margin-bottom:20px">
+                    <div class="indicator-card">
+                        <div class="indicator-value" id="pn-tarefas-pend" style="color:#D97706">--</div>
+                        <div class="indicator-label">Tarefas Pendentes</div>
+                    </div>
+                    <div class="indicator-card">
+                        <div class="indicator-value" id="pn-tarefas-conc" style="color:#2CA76E">--</div>
+                        <div class="indicator-label">Concluídas Hoje</div>
+                    </div>
+                    <div class="indicator-card">
+                        <div class="indicator-value" id="pn-pend-abertas" style="color:#2563EB">--</div>
+                        <div class="indicator-label">Pendências Abertas</div>
+                    </div>
+                    <div class="indicator-card">
+                        <div class="indicator-value" id="pn-pend-criticas" style="color:#DC2626">--</div>
+                        <div class="indicator-label">Pendências Críticas</div>
+                    </div>
+                    <div class="indicator-card">
+                        <div class="indicator-value" id="pn-alto-risco" style="color:#7c1d1d">--</div>
+                        <div class="indicator-label">Pacientes Alto Risco</div>
+                    </div>
+                </div>
+                <div class="card" style="margin-bottom:16px">
+                    <div class="card-header">
+                        <span class="card-icon blue"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+                        <h2 class="card-title">Tarefas de Hoje</h2>
+                        <button class="btn-outline-choice" id="btn-painel-ir-agenda" style="margin-left:auto;padding:5px 12px;font-size:0.78rem">Ver Agenda</button>
+                    </div>
+                    <div class="tasks-table-wrap">
+                        <table class="tasks-table">
+                            <thead><tr><th>Horário</th><th>Paciente</th><th>Tipo</th><th>Prioridade</th><th>Status</th></tr></thead>
+                            <tbody id="pn-tarefas-body"><tr><td colspan="5" class="table-empty">Carregando...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card" style="margin-bottom:16px">
+                    <div class="card-header">
+                        <span class="card-icon" style="background:#fef2f2;color:#DC2626"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+                        <h2 class="card-title">Pendências Críticas em Aberto</h2>
+                        <button class="btn-outline-choice" id="btn-painel-ir-pendencias" style="margin-left:auto;padding:5px 12px;font-size:0.78rem">Ver Pendências</button>
+                    </div>
+                    <div class="tasks-table-wrap">
+                        <table class="tasks-table">
+                            <thead><tr><th>Paciente</th><th>Categoria</th><th>Descrição</th><th>Status</th><th>Desde</th></tr></thead>
+                            <tbody id="pn-pend-criticas-body"><tr><td colspan="5" class="table-empty">Carregando...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon green"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+                        <h2 class="card-title">Consultas do Dia</h2>
+                    </div>
+                    <div class="tasks-table-wrap">
+                        <table class="tasks-table">
+                            <thead><tr><th>Horário</th><th>Paciente</th><th>Tipo</th><th>Risco</th><th>Status</th></tr></thead>
+                            <tbody id="pn-consultas-body"><tr><td colspan="5" class="table-empty">Carregando...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
 
             <!-- ── MÓDULO 0: LISTA DE PACIENTES ── -->
             <section id="module-patients" class="module active">

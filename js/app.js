@@ -131,6 +131,145 @@ const state = {
     focusNic:       null,
 };
 
+// ── PAINEL DO ENFERMEIRO ──────────────────────────────────────────────────────
+(function() {
+    var PAINEL_PRIO_COLOR = { critica:'#7c1d1d', alta:'#DC2626', moderada:'#D97706', baixa:'#2563EB', padrao:'#6B7280' };
+    var PAINEL_PRIO_BG    = { critica:'#fee2e2', alta:'#fee2e2', moderada:'#fef3c7', baixa:'#dbeafe', padrao:'#f1f5f9' };
+    var PAINEL_PRIO_LABEL = { critica:'Crítica', alta:'Alta', moderada:'Moderada', baixa:'Baixa', padrao:'Padrão' };
+    var RISCO_COLOR = { alto:'#DC2626', critico:'#7c1d1d', medio:'#D97706', baixo:'#2CA76E' };
+
+    function todayISO() {
+        return new Date().toISOString().slice(0, 10);
+    }
+
+    window.loadPainel = async function(data) {
+        if (!state.currentUser) return;
+        var dt = data || (document.getElementById('painel-data') && document.getElementById('painel-data').value) || todayISO();
+        if (!document.getElementById('painel-data').value) document.getElementById('painel-data').value = dt;
+
+        // loading state
+        ['pn-tarefas-body','pn-pend-criticas-body','pn-consultas-body'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.innerHTML = '<tr><td colspan="5" class="table-empty">Carregando...</td></tr>';
+        });
+
+        try {
+            var url = '/painel/enfermeiro?user=' + encodeURIComponent(state.currentUser.name) + '&data=' + dt;
+            var d = await api('GET', url);
+            renderPainel(d);
+        } catch(e) {
+            ['pn-tarefas-body','pn-pend-criticas-body','pn-consultas-body'].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) el.innerHTML = '<tr><td colspan="5" class="table-empty" style="color:#DC2626">Erro ao carregar.</td></tr>';
+            });
+        }
+    };
+
+    function renderPainel(d) {
+        var r = d.resumo || {};
+        var set = function(id, val) { var el = document.getElementById(id); if (el) el.textContent = val != null ? val : '--'; };
+        set('pn-tarefas-pend',  r.tarefas_pendentes);
+        set('pn-tarefas-conc',  r.tarefas_concluidas);
+        set('pn-pend-abertas',  r.pendencias_abertas);
+        set('pn-pend-criticas', r.pendencias_criticas);
+        set('pn-alto-risco',    r.pacientes_alto_risco);
+
+        // Alertas
+        var alertaEl = document.getElementById('painel-alertas');
+        if (d.alertas && d.alertas.length) {
+            alertaEl.style.display = 'block';
+            alertaEl.innerHTML = d.alertas.map(function(a) {
+                var bg = a.nivel === 'critico' ? '#fee2e2' : '#fef3c7';
+                var co = a.nivel === 'critico' ? '#7c1d1d' : '#92400e';
+                return '<div style="background:' + bg + ';color:' + co + ';border-radius:8px;padding:10px 14px;font-size:0.82rem;font-weight:600;margin-bottom:6px">' +
+                    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+                    a.mensagem + '</div>';
+            }).join('');
+        } else {
+            alertaEl.style.display = 'none';
+        }
+
+        // Tarefas do dia
+        var tbody = document.getElementById('pn-tarefas-body');
+        if (!d.tarefas_do_dia || !d.tarefas_do_dia.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="table-empty">Nenhuma tarefa para esta data.</td></tr>';
+        } else {
+            tbody.innerHTML = d.tarefas_do_dia.map(function(t) {
+                var pr = t.prioridade || 'padrao';
+                var prStyle = 'background:' + (PAINEL_PRIO_BG[pr]||'#f1f5f9') + ';color:' + (PAINEL_PRIO_COLOR[pr]||'#6B7280') +
+                              ';font-weight:700;font-size:0.7rem;padding:2px 7px;border-radius:20px';
+                var horario = t.data_prevista
+                    ? new Date(t.data_prevista).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
+                    : '—';
+                var stCo = t.status === 'concluida' ? '#15803d' : t.status === 'cancelada' ? '#6B7280' : '#D97706';
+                return '<tr>' +
+                    '<td style="font-size:0.8rem;white-space:nowrap">' + horario + '</td>' +
+                    '<td style="font-weight:600;font-size:0.82rem">' + (t.iniciais_nome||'—') + '</td>' +
+                    '<td style="font-size:0.8rem">' + (t.tipo_tarefa||'').replace(/_/g,' ') + '</td>' +
+                    '<td><span style="' + prStyle + '">' + (PAINEL_PRIO_LABEL[pr]||pr) + '</span></td>' +
+                    '<td style="font-size:0.78rem;font-weight:600;color:' + stCo + '">' + (t.status||'—') + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        // Pendências críticas
+        var tbody2 = document.getElementById('pn-pend-criticas-body');
+        if (!d.pendencias_criticas || !d.pendencias_criticas.length) {
+            tbody2.innerHTML = '<tr><td colspan="5" class="table-empty" style="color:#2CA76E">Nenhuma pendência crítica em aberto.</td></tr>';
+        } else {
+            tbody2.innerHTML = d.pendencias_criticas.map(function(p) {
+                var desc = p.descricao || '—';
+                var dtAb = (p.data_abertura || p.created_at)
+                    ? new Date(p.data_abertura || p.created_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'})
+                    : '—';
+                return '<tr>' +
+                    '<td style="font-weight:600;font-size:0.82rem">' + (p.iniciais_nome||'—') + '</td>' +
+                    '<td style="font-size:0.8rem">' + (p.categoria||'—') + '</td>' +
+                    '<td style="font-size:0.8rem"><span title="' + desc.replace(/"/g,'') + '">' + (desc.length>42?desc.substring(0,42)+'…':desc) + '</span></td>' +
+                    '<td><span style="background:#fee2e2;color:#7c1d1d;font-size:0.7rem;font-weight:700;padding:2px 7px;border-radius:20px">' + (p.status||'—') + '</span></td>' +
+                    '<td style="font-size:0.78rem;white-space:nowrap">' + dtAb + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        // Consultas do dia
+        var tbody3 = document.getElementById('pn-consultas-body');
+        if (!d.consultas_do_dia || !d.consultas_do_dia.length) {
+            tbody3.innerHTML = '<tr><td colspan="5" class="table-empty">Nenhuma consulta registrada para esta data.</td></tr>';
+        } else {
+            tbody3.innerHTML = d.consultas_do_dia.map(function(c) {
+                var horario = c.data_hora
+                    ? new Date(c.data_hora).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
+                    : '—';
+                var risco = c.classificacao_risco_validada || c.classificacao_risco_automatica || '—';
+                var riscoCo = RISCO_COLOR[risco.toLowerCase()] || '#6B7280';
+                return '<tr>' +
+                    '<td style="font-size:0.8rem;white-space:nowrap">' + horario + '</td>' +
+                    '<td style="font-weight:600;font-size:0.82rem">' + (c.iniciais_nome||'—') + '</td>' +
+                    '<td style="font-size:0.8rem">' + (c.tipo_consulta||'—') + '</td>' +
+                    '<td style="font-size:0.78rem;font-weight:600;color:' + riscoCo + '">' + risco + '</td>' +
+                    '<td style="font-size:0.78rem">' + (c.status_consulta||'—') + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+    }
+
+    // Handlers inicializados após DOM pronto
+    document.addEventListener('DOMContentLoaded', function() {
+        var btnAtualizar = document.getElementById('btn-atualizar-painel');
+        if (btnAtualizar) {
+            btnAtualizar.addEventListener('click', function() {
+                loadPainel(document.getElementById('painel-data').value || todayISO());
+            });
+        }
+        var btnAgenda = document.getElementById('btn-painel-ir-agenda');
+        if (btnAgenda) btnAgenda.addEventListener('click', function() { activateModule('module-tasks'); });
+        var btnPend = document.getElementById('btn-painel-ir-pendencias');
+        if (btnPend) btnPend.addEventListener('click', function() { activateModule('module-pendencias'); });
+    });
+})();
+// ─────────────────────────────────────────────────────────────────────────────
+
 function activateModule(targetId) {
     document.querySelectorAll('.module').forEach(function(m){ m.classList.remove('active'); });
     document.querySelectorAll('.nav-item, .tab').forEach(function(el){ el.classList.remove('active'); });
@@ -146,6 +285,7 @@ function activateModule(targetId) {
     if (targetId === 'module-patients')   loadPatientsList();
     if (targetId === 'module-nanda')      loadNanda(document.getElementById('dx-search') ? document.getElementById('dx-search').value : '');
     if (targetId === 'module-followup')   buildFollowupPanel();
+    if (targetId === 'module-painel')      loadPainel();
     if (targetId === 'module-tasks')       loadTarefas();
     if (targetId === 'module-pendencias')  loadPendencias();
     if (targetId === 'module-indicators')  loadIndicators();
