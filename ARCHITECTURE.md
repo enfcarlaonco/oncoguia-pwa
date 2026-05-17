@@ -1,8 +1,13 @@
-# OncoGuia — Arquitetura v1.0.0
+# OncoGuia — Arquitetura v1.1.0
 
 **Marco estável:** 17/05/2026  
-**Backend tag:** `v1.0.0` — `oncoguia-api` (Railway)  
-**Frontend tag:** `v1.0.0` — `oncoguia-pwa` (GitHub Pages)
+**Backend tag:** `v1.1.0` — `oncoguia-api` — commit `1ea01de` (Railway)  
+**Frontend tag:** `v1.1.0` — `oncoguia-pwa` — commit `cf021e8` (GitHub Pages)
+
+| Versão | Backend | Frontend | Data |
+|---|---|---|---|
+| v1.0.0 | `1d62a0b` | `878e27b` | 17/05/2026 |
+| v1.1.0 | `1ea01de` | `cf021e8` | 17/05/2026 |
 
 ---
 
@@ -51,8 +56,21 @@
 ### `/api/tarefas`
 | Método | Rota | Descrição |
 |---|---|---|
-| GET | `/` | Lista tarefas (filtros por status/paciente) |
-| PATCH | `/:id` | Atualiza status da tarefa — requer `completed_by_user_name` |
+| GET | `/` | Lista tarefas com filtros (status, prioridade, id_paciente, periodo, data) |
+| POST | `/` | Cria tarefa manualmente — requer `created_by_user_name` |
+| GET | `/:id` | Detalhe de uma tarefa (com join em `pacientes`) |
+| PUT | `/:id/concluir` | Conclui tarefa com resultado e efetividade — requer `completed_by_user_name` |
+| PATCH | `/:id` | Atualiza campos parciais — requer `completed_by_user_name` |
+
+**Parâmetros de filtro em `GET /api/tarefas`:**
+- `status` — valor exato (pendente, em_andamento, concluida, cancelada)
+- `prioridade` — valor exato (critica, alta, moderada, baixa, padrao)
+- `id_paciente` — filtra por paciente
+- `data` — filtra por `data_prevista::date = $data`
+- `periodo=hoje` — `data_prevista::date = CURRENT_DATE`
+- `periodo=proximas` — `data_prevista` nos próximos 7 dias
+
+**Ordenação padrão:** por prioridade decrescente (crítica→alta→moderada→baixa→padrão), depois `data_prevista ASC NULLS LAST`.
 
 ### `/api/referencia`
 | Método | Rota | Descrição |
@@ -106,6 +124,31 @@
 | `tarefas_assistenciais` | `created_by_user_name`, `completed_by_user_name`, `updated_by_user_name` |
 | `seguimentos_enfermagem` | `created_by_user_name`, `updated_by_user_name` |
 | `pacientes` | `created_by_user_name`, `updated_by_user_name` |
+
+### Coluna adicionada na Fase 6
+| Tabela | Coluna | Tipo | Descrição |
+|---|---|---|---|
+| `tarefas_assistenciais` | `descricao` | `TEXT` | Descrição livre da tarefa (opcional) |
+
+### Estrutura de `tarefas_assistenciais` (colunas relevantes)
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| `id_tarefa` | SERIAL PK | Identificador da tarefa |
+| `id_paciente` | INTEGER FK | Referência a `pacientes` |
+| `origem` | VARCHAR | `'manual'` ou `'consulta'` |
+| `origem_clinica_id` | INTEGER | `id_consulta` de origem (opcional) |
+| `tipo_tarefa` | VARCHAR | Ex: `retorno`, `avaliacao_urgente`, `ligacao`, `contato_telefonico` |
+| `descricao` | TEXT | Descrição livre (Fase 6) |
+| `prioridade` | VARCHAR | `critica` \| `alta` \| `moderada` \| `baixa` \| `padrao` |
+| `status` | VARCHAR | `pendente` \| `em_andamento` \| `concluida` \| `cancelada` |
+| `conduta_realizada` | TEXT | Resultado do atendimento (mapeado de `resultado` no PUT /concluir) |
+| `efetividade` | VARCHAR | `resolvido` \| `melhora_parcial` \| `sem_melhora` \| `piora` \| `encaminhado` |
+| `responsavel` | TEXT | Nome do responsável |
+| `data_prevista` | TIMESTAMPTZ | Data/hora prevista para execução |
+| `data_conclusao` | TIMESTAMPTZ | Preenchido automaticamente ao concluir |
+| `created_by_user_name` | TEXT | Quem criou |
+| `completed_by_user_name` | TEXT | Quem concluiu |
+| `updated_by_user_name` | TEXT | Última atualização |
 
 ### Estrutura de `consulta_orientacoes`
 ```sql
@@ -234,7 +277,63 @@ state.plano = [
 
 ---
 
-## 8. Deploy
+## 8. Painel Agenda do Enfermeiro (Fase 6)
+
+### Fluxo de carregamento
+
+```
+Usuário clica em "Agenda" no menu lateral
+    ↓
+showModule('module-tasks') → loadTarefas()
+    ↓
+GET /api/tarefas  (sem filtros — lista todas)
+    ↓
+renderTarefas(tarefas) — tabela com cores por prioridade
+```
+
+### Chips de filtro
+
+| Chip | URL chamada |
+|---|---|
+| Todas | `GET /api/tarefas` |
+| Hoje | `GET /api/tarefas?periodo=hoje` |
+| Próximas | `GET /api/tarefas?periodo=proximas` |
+| Pendentes | `GET /api/tarefas?status=pendente` |
+| Concluídas | `GET /api/tarefas?status=concluida` |
+
+### Cores por prioridade (frontend)
+
+| Prioridade | Cor do texto | Fundo |
+|---|---|---|
+| `critica` | `#7c1d1d` | `#fee2e2` |
+| `alta` | `#DC2626` | `#fee2e2` |
+| `moderada` | `#D97706` | `#fef3c7` |
+| `baixa` | `#2563EB` | `#dbeafe` |
+| `padrao` | `#6B7280` | `#f1f5f9` |
+
+### Modal "Nova Tarefa"
+
+**Campos:** tipo_tarefa (select), descrição (textarea), prioridade (select), data prevista (datetime-local).  
+**Submit:** `POST /api/tarefas` com `id_paciente = state.patient.id` e `created_by_user_name = state.currentUser.name`.  
+**Pós-criação:** fecha modal + `loadTarefas()`.
+
+### Modal "Concluir Tarefa"
+
+**Campos:** resultado (textarea), efetividade (select).  
+**Submit:** `PUT /api/tarefas/:id/concluir` com `completed_by_user_name = state.currentUser.name`.  
+**Mapeamento:** campo `resultado` do formulário → coluna `conduta_realizada` no banco.  
+**Pós-conclusão:** fecha modal + `loadTarefas()`.
+
+### Regras de negócio
+
+- Tarefas **nunca** são excluídas fisicamente do banco; usam `status = 'cancelada'` quando descartadas.
+- `updated_by_user_name` ausente em qualquer write → retorno `401`.
+- A ordenação é sempre por prioridade (crítica primeiro) e depois por `data_prevista ASC`.
+- O chip ativo destaca visualmente a seleção; os demais são estilo secundário.
+
+---
+
+## 9. Deploy
 
 | Componente | Trigger | Destino |
 |---|---|---|
