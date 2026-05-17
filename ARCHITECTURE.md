@@ -1,13 +1,14 @@
-# OncoGuia — Arquitetura v1.1.0
+# OncoGuia — Arquitetura v1.2.0
 
 **Marco estável:** 17/05/2026  
-**Backend tag:** `v1.1.0` — `oncoguia-api` — commit `1ea01de` (Railway)  
-**Frontend tag:** `v1.1.0` — `oncoguia-pwa` — commit `cf021e8` (GitHub Pages)
+**Backend tag:** `v1.2.0` — `oncoguia-api` — commit `74cb8ea` (Railway)  
+**Frontend tag:** `v1.2.0` — `oncoguia-pwa` — commit `cde9b41` (GitHub Pages)
 
 | Versão | Backend | Frontend | Data |
 |---|---|---|---|
 | v1.0.0 | `1d62a0b` | `878e27b` | 17/05/2026 |
 | v1.1.0 | `1ea01de` | `cf021e8` | 17/05/2026 |
+| v1.2.0 | `74cb8ea` | `cde9b41` | 17/05/2026 |
 
 ---
 
@@ -72,6 +73,23 @@
 
 **Ordenação padrão:** por prioridade decrescente (crítica→alta→moderada→baixa→padrão), depois `data_prevista ASC NULLS LAST`.
 
+### `/api/pendencias`
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/` | Lista pendências com filtros (status, prioridade, categoria, id_paciente) |
+| POST | `/` | Cria pendência — requer `created_by_user_name` |
+| GET | `/:id` | Detalhe de uma pendência (com join em `pacientes`) |
+| PUT | `/:id/resolver` | Resolve pendência com conduta — requer `resolved_by_user_name` |
+| PATCH | `/:id` | Atualiza status, categoria, prioridade ou conduta — requer `updated_by_user_name` |
+
+**Parâmetros de filtro em `GET /api/pendencias`:**
+- `status` — valor exato (aberta, em_acompanhamento, resolvida, cancelada)
+- `prioridade` — valor exato (critica, alta, moderada, baixa)
+- `categoria` — valor exato (clinica, medicamentosa, social, administrativa, laboratorial, psicologica, nutricional, adesao, acesso_rede)
+- `id_paciente` — filtra por paciente
+
+**Ordenação padrão:** por prioridade decrescente (crítica→alta→moderada→baixa), depois `created_at ASC NULLS LAST`.
+
 ### `/api/referencia`
 | Método | Rota | Descrição |
 |---|---|---|
@@ -107,6 +125,7 @@
 | `consulta_orientacoes` | `id_consulta` | Orientações ao paciente e cuidador por NIC |
 | `seguimentos_enfermagem` | `id_seguimento` | Seguimentos registrados |
 | `tarefas_assistenciais` | `id_tarefa` | Tarefas geradas por consultas ou manualmente |
+| `pendencias_paciente` | `id_pendencia` | Pendências clínicas e administrativas do paciente (Fase 7) |
 
 ### Tabelas de apoio (criadas na Fase 1, ainda não utilizadas pelo frontend)
 | Tabela | Descrição |
@@ -115,7 +134,6 @@
 | `consulta_exame_fisico` | Dados do exame físico |
 | `consulta_exames_laboratoriais` | Resultados laboratoriais |
 | `planos_seguimento` | Planejamento de seguimento |
-| `pendencias_paciente` | Pendências clínicas abertas |
 
 ### Colunas de auditoria adicionadas na Fase 1
 | Tabela | Colunas adicionadas |
@@ -124,6 +142,40 @@
 | `tarefas_assistenciais` | `created_by_user_name`, `completed_by_user_name`, `updated_by_user_name` |
 | `seguimentos_enfermagem` | `created_by_user_name`, `updated_by_user_name` |
 | `pacientes` | `created_by_user_name`, `updated_by_user_name` |
+
+### Colunas adicionadas na Fase 7 em `pendencias_paciente`
+A tabela foi criada na Fase 1 com colunas mínimas. As seguintes foram adicionadas via migração segura:
+
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| `id_consulta_origem` | INTEGER FK | Consulta que originou a pendência (opcional) |
+| `categoria` | VARCHAR(40) | Categoria clínica/administrativa da pendência |
+| `prioridade` | VARCHAR(20) DEFAULT `'moderada'` | Nível de prioridade |
+| `conduta_atual` | TEXT | Conduta registrada ao resolver |
+| `created_by_user_name` | TEXT | Quem criou a pendência |
+| `resolved_by_user_name` | TEXT | Quem resolveu a pendência |
+| `resolved_at` | TIMESTAMPTZ | Momento da resolução |
+| `created_at` | TIMESTAMPTZ DEFAULT NOW() | Criação (usado na ordenação) |
+
+### Estrutura completa de `pendencias_paciente`
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| `id_pendencia` | SERIAL PK | Identificador |
+| `id_paciente` | INTEGER FK | Referência a `pacientes` |
+| `id_consulta_origem` | INTEGER FK | Consulta de origem (opcional) |
+| `categoria` | VARCHAR(40) | clinica \| medicamentosa \| social \| administrativa \| laboratorial \| psicologica \| nutricional \| adesao \| acesso_rede |
+| `descricao` | TEXT | Descrição do problema ou situação |
+| `prioridade` | VARCHAR(20) | critica \| alta \| moderada \| baixa |
+| `status` | VARCHAR(20) | aberta \| em_acompanhamento \| resolvida \| cancelada |
+| `conduta_atual` | TEXT | O que foi realizado para resolver |
+| `data_abertura` | TIMESTAMPTZ | Preenchida automaticamente na criação (legado) |
+| `created_at` | TIMESTAMPTZ | Criação — usada na ordenação |
+| `data_fechamento` | TIMESTAMPTZ | Preenchida ao resolver (legado, sincronizado com `resolved_at`) |
+| `resolved_at` | TIMESTAMPTZ | Momento da resolução |
+| `created_by_user_name` | TEXT | Quem registrou a pendência |
+| `resolved_by_user_name` | TEXT | Quem resolveu a pendência |
+
+> **Regra fundamental:** pendências **nunca** são excluídas fisicamente. Descarte usa `status = 'cancelada'`. Histórico completo sempre preservado.
 
 ### Coluna adicionada na Fase 6
 | Tabela | Coluna | Tipo | Descrição |
@@ -333,7 +385,79 @@ renderTarefas(tarefas) — tabela com cores por prioridade
 
 ---
 
-## 9. Deploy
+## 9. Painel Pendências do Paciente (Fase 7)
+
+### Conceito clínico
+
+**Pendência ≠ Tarefa.**  
+- **Tarefa:** ação operacional do enfermeiro (ligar, encaminhar, reavaliar).  
+- **Pendência:** problema ou situação clínica/administrativa ainda não resolvida do paciente (dor sem controle, perda ponderal, dificuldade de acesso à medicação, etc.).
+
+### Fluxo de carregamento
+
+```
+Usuário clica em "Pendências" no menu lateral
+    ↓
+activateModule('module-pendencias') → loadPendencias()
+    ↓
+GET /api/pendencias  (sem filtros — lista todas)
+    ↓
+renderPendencias(lista) — tabela com cores por prioridade e badges de status
+```
+
+### Chips de filtro
+
+| Chip | URL chamada |
+|---|---|
+| Todas | `GET /api/pendencias` |
+| Abertas | `GET /api/pendencias?status=aberta` |
+| Acompanhamento | `GET /api/pendencias?status=em_acompanhamento` |
+| Resolvidas | `GET /api/pendencias?status=resolvida` |
+| Críticas | `GET /api/pendencias?prioridade=critica` |
+| Select categoria | `GET /api/pendencias?categoria={valor}` |
+
+### Cores de status (frontend)
+
+| Status | Cor do texto | Fundo |
+|---|---|---|
+| `aberta` | `#92400e` | `#fef3c7` |
+| `em_acompanhamento` | `#1e40af` | `#dbeafe` |
+| `resolvida` | `#14532d` | `#dcfce7` |
+| `cancelada` | `#374151` | `#f1f5f9` |
+
+### Cores de prioridade
+
+Reutiliza as mesmas constantes de `PRIOR_COLOR` / `PRIOR_BG` das tarefas.
+
+### Modal "Nova Pendência"
+
+**Campos:** paciente (read-only), categoria (select obrigatório), descrição (textarea obrigatório), prioridade (select).  
+**Integração com consulta:** se `state.consultaId` estiver definido, o campo `id_consulta_origem` é preenchido automaticamente e exibido como info. Isso satisfaz a **Fase 7.3** — vínculo com a consulta atual sem alterar a tela SAE.  
+**Submit:** `POST /api/pendencias` com `id_paciente = state.patient.id` e `created_by_user_name = state.currentUser.name`.
+
+### Modal "Resolver Pendência"
+
+**Campos:** conduta realizada (textarea obrigatório).  
+**Submit:** `PUT /api/pendencias/:id/resolver` com `resolved_by_user_name = state.currentUser.name`.  
+**Efeitos no banco:** `status → 'resolvida'`, `resolved_at = NOW()`, `data_fechamento = NOW()` (legado), `conduta_atual` preenchida.  
+**Pós-resolução:** fecha modal + `loadPendencias()` — registro permanece visível na lista.
+
+### Integração com Indicadores
+
+`loadIndicators()` chama `GET /api/pendencias?status=aberta` e exibe a contagem no card "Pendências Abertas".
+
+### Regras de negócio
+
+- Pendências **nunca** são excluídas fisicamente.
+- Pendências resolvidas continuam visíveis — filtro "Resolvidas" exibe o histórico completo.
+- Críticas sempre aparecem no topo (ordenação por prioridade).
+- `created_by_user_name` ausente no POST → retorno `401`.
+- `resolved_by_user_name` ausente no PUT → retorno `401`.
+- `updated_by_user_name` ausente no PATCH → retorno `401`.
+
+---
+
+## 10. Deploy
 
 | Componente | Trigger | Destino |
 |---|---|---|
