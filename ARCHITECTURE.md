@@ -1,14 +1,15 @@
-# OncoGuia — Arquitetura v1.2.0
+# OncoGuia — Arquitetura v1.3.0
 
 **Marco estável:** 17/05/2026  
-**Backend tag:** `v1.2.0` — `oncoguia-api` — commit `74cb8ea` (Railway)  
-**Frontend tag:** `v1.2.0` — `oncoguia-pwa` — commit `cde9b41` (GitHub Pages)
+**Backend tag:** `v1.3.0` — `oncoguia-api` — commit `c05d2d9` (Railway)  
+**Frontend tag:** `v1.3.0` — `oncoguia-pwa` — commit `7e2084a` (GitHub Pages)
 
 | Versão | Backend | Frontend | Data |
 |---|---|---|---|
 | v1.0.0 | `1d62a0b` | `878e27b` | 17/05/2026 |
 | v1.1.0 | `1ea01de` | `cf021e8` | 17/05/2026 |
 | v1.2.0 | `74cb8ea` | `cde9b41` | 17/05/2026 |
+| v1.3.0 | `c05d2d9` | `7e2084a` | 17/05/2026 |
 
 ---
 
@@ -89,6 +90,16 @@
 - `id_paciente` — filtra por paciente
 
 **Ordenação padrão:** por prioridade decrescente (crítica→alta→moderada→baixa), depois `created_at ASC NULLS LAST`.
+
+### `/api/painel`
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/enfermeiro` | Resumo operacional diário — requer `user` como query param |
+
+**Parâmetros de `GET /api/painel/enfermeiro`:**
+- `user` — nome do usuário autenticado (obrigatório; ausente → 401)
+- `data` — data no formato `YYYY-MM-DD` (opcional; padrão: data atual)
+- `responsavel` — filtra `tarefas_do_dia` por responsável (opcional)
 
 ### `/api/referencia`
 | Método | Rota | Descrição |
@@ -457,7 +468,128 @@ Reutiliza as mesmas constantes de `PRIOR_COLOR` / `PRIOR_BG` das tarefas.
 
 ---
 
-## 10. Deploy
+## 10. Painel do Enfermeiro (Fase 8)
+
+### Propósito
+
+Visão operacional diária unificada. O enfermeiro abre o painel e vê, em uma única tela, todas as demandas do dia: tarefas planejadas, pendências críticas sem resolução e consultas registradas. Não substitui os módulos Agenda, Pendências ou Consultas — resume e direciona.
+
+### Modelo operacional
+
+O sistema opera com múltiplos enfermeiros (atualmente: Carla Alves e Danielle Cabral). O painel **não filtra por responsável por padrão** — exibe todos os dados da data selecionada. O filtro `responsavel` é opcional e, quando informado, restringe `tarefas_do_dia` à pessoa especificada. Pendências e consultas sempre aparecem independentemente do responsável.
+
+> **Decisão de design:** sem bloqueio por responsável nesta fase. O painel é compartilhado — qualquer enfermeira logada vê a operação completa do dia.
+
+### Fluxo de carregamento
+
+```
+Usuário clica em "Painel" no menu lateral
+    ↓
+activateModule('module-painel') → loadPainel()
+    ↓
+GET /api/painel/enfermeiro?user={currentUser.name}&data={painel-data}
+    ↓
+renderPainel(d) — atualiza cards, tabelas e alertas
+```
+
+### Estrutura do JSON de resposta
+
+```json
+{
+  "data": "2026-05-17",
+  "resumo": {
+    "tarefas_pendentes": 1,
+    "tarefas_concluidas": 1,
+    "pendencias_abertas": 3,
+    "pendencias_criticas": 1,
+    "pacientes_alto_risco": 1
+  },
+  "tarefas_do_dia": [
+    {
+      "id_tarefa": 23,
+      "tipo_tarefa": "reavaliacao_toxicidade",
+      "descricao": "Reavaliar toxicidade hematologica",
+      "prioridade": "alta",
+      "status": "pendente",
+      "data_prevista": "2026-05-17T10:00:00Z",
+      "responsavel": null,
+      "created_by_user_name": "Enf. Carla",
+      "iniciais_nome": "A.C.P",
+      "registro_instituicao": "7654321"
+    }
+  ],
+  "pendencias_criticas": [
+    {
+      "id_pendencia": 4,
+      "categoria": "clinica",
+      "descricao": "Toxicidade grau 3 persistente — vomitos incoerciveis",
+      "prioridade": "critica",
+      "status": "aberta",
+      "created_by_user_name": "Enf. Carla",
+      "iniciais_nome": "A.C.P"
+    }
+  ],
+  "pendencias_abertas": [ "... todas com status aberta ou em_acompanhamento ..." ],
+  "consultas_do_dia": [
+    {
+      "id_consulta": 22,
+      "tipo_consulta": "retorno",
+      "status_consulta": "concluida",
+      "data_hora": "2026-05-17T09:00:00Z",
+      "classificacao_risco_validada": "moderado",
+      "iniciais_nome": "A.C.P"
+    }
+  ],
+  "alertas": [
+    { "nivel": "critico", "mensagem": "1 pendência(s) crítica(s) em aberto." },
+    { "nivel": "alto",    "mensagem": "1 tarefa(s) com prazo vencido." }
+  ]
+}
+```
+
+### Cálculo dos cards de resumo
+
+| Card | Campo | Cálculo |
+|---|---|---|
+| Tarefas Pendentes | `tarefas_pendentes` | `tarefas_do_dia` com `status IN ('pendente', 'em_andamento')` |
+| Concluídas Hoje | `tarefas_concluidas` | `tarefas_do_dia` com `status = 'concluida'` |
+| Pendências Abertas | `pendencias_abertas` | Contagem de `pendencias_abertas` (todos com status aberta/em_acompanhamento) |
+| Pendências Críticas | `pendencias_criticas` | Contagem de `pendencias_criticas` (prioridade=crítica, não resolvidas) |
+| Pacientes Alto Risco | `pacientes_alto_risco` | `COUNT(DISTINCT id_paciente)` com risco alto/crítico nos últimos 30 dias |
+
+> **Observação:** `tarefas_do_dia` e `consultas_do_dia` são filtradas pela data selecionada (`data_prevista::date` e `data_hora::date`). `pendencias_abertas` e `pendencias_criticas` são **sempre globais** — não filtradas por data, pois representam situações em curso independentemente do dia.
+
+### Regras de alertas automáticos
+
+Alertas são gerados dinamicamente no backend a partir dos dados retornados:
+
+| Condição | Nível | Mensagem |
+|---|---|---|
+| `pendencias_criticas.length > 0` | `critico` | `N pendência(s) crítica(s) em aberto.` |
+| Tarefas do dia com `status pendente/em_andamento` e `data_prevista < agora` | `alto` | `N tarefa(s) com prazo vencido.` |
+
+Alertas são exibidos em banda colorida no topo do painel (vermelho escuro = crítico, âmbar = alto). Desaparecem quando não há condição ativa.
+
+### Autenticação
+
+- `user` ausente no query param → `401 Usuário não autenticado.`
+- Não há JWT; o `user` é o `state.currentUser.name` propagado pelo frontend.
+- Nenhum dado é filtrado por `user` exceto quando `responsavel` é explicitamente passado.
+
+### Botões de navegação
+
+| Botão | Ação |
+|---|---|
+| "Ver Agenda" | `activateModule('module-tasks')` |
+| "Ver Pendências" | `activateModule('module-pendencias')` |
+
+### Filtro de data (frontend)
+
+Input `type="date"` com valor padrão = data atual (ISO). Ao clicar "Atualizar", chama `loadPainel(data)` com a nova data. Arrays vazios retornam mensagem amigável sem quebrar a tela.
+
+---
+
+## 11. Deploy
 
 | Componente | Trigger | Destino |
 |---|---|---|
