@@ -769,6 +769,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     updated_by_user_name: state.currentUser ? state.currentUser.name : null
                 });
             } catch(err) { console.warn('[autoSavePlano]', err.message); }
+            try {
+                var orientacoes = state.plano.flatMap(function(dx) {
+                    return dx.nics.flatMap(function(n) {
+                        var entries = [];
+                        if (n.orientacao_paciente && n.orientacao_paciente.trim())
+                            entries.push({ codigo_nic: n.codigo, tipo: 'paciente', texto: n.orientacao_paciente });
+                        if (n.orientacao_cuidador && n.orientacao_cuidador.trim())
+                            entries.push({ codigo_nic: n.codigo, tipo: 'cuidador', texto: n.orientacao_cuidador });
+                        return entries;
+                    });
+                });
+                if (state.currentUser) {
+                    await api('POST', '/consultas/' + state.consultaId + '/orientacoes', {
+                        orientacoes: orientacoes,
+                        updated_by_user_name: state.currentUser.name
+                    });
+                }
+            } catch(err) { console.error('[autoSavePlano:orientacoes]', err.message); }
         }, 1500);
     }
 
