@@ -589,7 +589,130 @@ Input `type="date"` com valor padrão = data atual (ISO). Ao clicar "Atualizar",
 
 ---
 
-## 11. Deploy
+## 11. Referência de Payloads dos Endpoints
+
+> **Atenção:** todos os writes exigem o campo de auditoria correspondente (`created_by_user_name`, `updated_by_user_name` ou `completed_by_user_name`). Ausência retorna `401`.
+
+### `PUT /api/consultas/:id/sintomas`
+```json
+{
+  "sintomas": [
+    {
+      "tipo_sintoma": "nausea",
+      "grau_ctcae": 2,
+      "alerta_risco": false,
+      "observacao": "náusea pós quimioterapia"
+    },
+    {
+      "tipo_sintoma": "vomito",
+      "grau_ctcae": 2,
+      "alerta_risco": false,
+      "observacao": null
+    }
+  ],
+  "classificacao_risco_automatica": "moderado",
+  "updated_by_user_name": "Carla Alves"
+}
+```
+> Campos `alerta_risco` e `observacao` são opcionais (default: `false` e `null`).  
+> O campo se chama `tipo_sintoma`, não `codigo_ctcae`. O grau é `grau_ctcae`, não `grau`.
+
+**Resposta:** `{ "ok": true, "registros": 2 }`
+
+---
+
+### `POST /api/consultas/:id/concluir`
+```json
+{
+  "classificacao_risco_validada": "moderado",
+  "texto_copiavel_prontuario": "CONSULTA DE ENFERMAGEM...",
+  "plano_cuidado_resumido": "Náusea",
+  "conduta_seguimento_definida": "Retorno em 7 dias",
+  "tipo_tarefa": "contato_telefonico",
+  "data_prevista_tarefa": "2026-05-24",
+  "prioridade_tarefa": "alta",
+  "responsavel": "Carla Alves",
+  "completed_by_user_name": "Carla Alves"
+}
+```
+> `classificacao_risco_validada` representa a decisão clínica final do enfermeiro (pode diferir da automática).  
+> `tipo_tarefa`, `data_prevista_tarefa` e `prioridade_tarefa` são opcionais — geram tarefa só se presentes.
+
+---
+
+### `POST /api/consultas/:id/orientacoes`
+```json
+{
+  "orientacoes": [
+    { "codigo_nic": 1450, "tipo": "paciente", "texto": "Faça refeições pequenas e frequentes..." },
+    { "codigo_nic": 1450, "tipo": "cuidador", "texto": "Ofereça alimentos de fácil digestão..." }
+  ],
+  "updated_by_user_name": "Carla Alves"
+}
+```
+> `tipo` aceita somente `"paciente"` ou `"cuidador"`.  
+> Apaga e reinserere todas as orientações da consulta (DELETE + INSERT em transação).
+
+---
+
+### `POST /api/tarefas`
+```json
+{
+  "id_paciente": 16,
+  "tipo_tarefa": "reavaliacao_toxicidade",
+  "descricao": "Reavaliar toxicidade hematológica após próximo ciclo",
+  "prioridade": "alta",
+  "responsavel": "Carla Alves",
+  "data_prevista": "2026-05-24",
+  "created_by_user_name": "Carla Alves"
+}
+```
+> `tipo_tarefa` aceita: `retorno`, `avaliacao_urgente`, `ligacao`, `contato_telefonico`, `reavaliacao_toxicidade`, `encaminhamento`.  
+> `prioridade` aceita: `critica`, `alta`, `moderada`, `baixa`, `padrao`.
+
+---
+
+### `PUT /api/tarefas/:id/concluir`
+```json
+{
+  "resultado": "Paciente sem novas queixas, toxicidade controlada",
+  "efetividade": "resolvido",
+  "completed_by_user_name": "Carla Alves"
+}
+```
+> `resultado` → coluna `conduta_realizada` no banco (mapeamento interno).  
+> `efetividade` aceita: `resolvido`, `melhora_parcial`, `sem_melhora`, `piora`, `encaminhado`.
+
+---
+
+### `POST /api/pendencias`
+```json
+{
+  "id_paciente": 16,
+  "categoria": "clinica",
+  "descricao": "Fadiga grau 3 limitando atividades de vida diária",
+  "prioridade": "alta",
+  "id_consulta_origem": 23,
+  "created_by_user_name": "Carla Alves"
+}
+```
+> `categoria` aceita: `clinica`, `medicamentosa`, `social`, `administrativa`, `laboratorial`, `psicologica`, `nutricional`, `adesao`, `acesso_rede`.  
+> `id_consulta_origem` é opcional — preencher quando a pendência surgiu de uma consulta específica.
+
+---
+
+### `PUT /api/pendencias/:id/resolver`
+```json
+{
+  "conduta": "Paciente encaminhada ao serviço de fadiga — hemograma solicitado",
+  "resolved_by_user_name": "Carla Alves"
+}
+```
+> Efeitos no banco: `status → 'resolvida'`, `resolved_at = NOW()`, `data_fechamento = NOW()`, `conduta_atual = conduta`.
+
+---
+
+## 12. Deploy
 
 | Componente | Trigger | Destino |
 |---|---|---|

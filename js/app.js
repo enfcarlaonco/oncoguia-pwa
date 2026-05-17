@@ -450,6 +450,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const c = await api('POST', '/consultas', { id_paciente: state.patient.id, tipo_consulta: 'retorno' });
             state.consultaId = c.id_consulta;
         } catch(e) {}
+        var rSel = document.getElementById('risco-validado');
+        if (rSel) { rSel.value = 'baixo'; delete rSel.dataset.manualOverride; }
         setupPatientDisplay();
         showApp();
         activateModule('module-triage');
@@ -470,6 +472,8 @@ document.addEventListener('DOMContentLoaded', function() {
         state.plano = [];
         state.focusDx = null;
         state.focusNic = null;
+        var rSel = document.getElementById('risco-validado');
+        if (rSel) { rSel.value = 'baixo'; delete rSel.dataset.manualOverride; }
         showApp();
         activateModule('module-id');
     });
@@ -636,6 +640,11 @@ document.addEventListener('DOMContentLoaded', function() {
         el.addEventListener('change', evaluateRisk);
     });
 
+    (function() {
+        var rSel = document.getElementById('risco-validado');
+        if (rSel) rSel.addEventListener('change', function() { this.dataset.manualOverride = '1'; });
+    })();
+
     function updateRiskUI(level, criteria) {
         const cfg = {
             baixo:    { cls:'green', label:'Baixo Risco',    sub:'Sem critérios de alerta',    pct:'5%',  icon:'<path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>' },
@@ -662,6 +671,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (lbl)   lbl.textContent  = cfg.label;
         if (badge) { badge.className = 'risk-badge-inline ' + (cfg.cls === 'green' ? '' : cfg.cls); badge.innerHTML = '<span class="risk-dot-sm ' + cfg.cls + '"></span>' + cfg.label; }
         if (list)  list.innerHTML   = criteria.length ? criteria.map(function(c){ return '<div class="criterion-item ' + c.level + '">' + c.text + '</div>'; }).join('') : '<div class="criteria-empty">Nenhum critério de risco identificado.</div>';
+        var rSel = document.getElementById('risco-validado');
+        if (rSel && !rSel.dataset.manualOverride) rSel.value = level;
     }
 
     let sintomasTimer = null;
@@ -1567,6 +1578,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .filter(function(e){ return e[1].grade > 0 || e[1].isRisk; })
             .map(function(e){ return e[1].label + ': ' + (e[1].isRisk ? 'Sim (G3+)' : 'Grau ' + e[1].grade); });
 
+        const riscoValidado = (document.getElementById('risco-validado')?.value || state.riskLevel);
         const riskLabels = { baixo:'BAIXO RISCO', moderado:'RISCO MODERADO', alto:'ALTO RISCO' };
         const saePlan    = (state.plano || []);
 
@@ -1596,7 +1608,8 @@ document.addEventListener('DOMContentLoaded', function() {
 'ECOG: ' + (state.ecog||'N/A') + '\n' +
 'PA: ' + pa + ' | Temp: ' + temp + '°C | SatO2: ' + sato2 + '%\n\n' +
 '[TRIAGEM CTCAE]\n' +
-'Risco Estratificado: ' + riskLabels[state.riskLevel] + '\n' +
+'Risco Automático: ' + riskLabels[state.riskLevel] + '\n' +
+'Risco Validado  : ' + riskLabels[riscoValidado] + '\n' +
 (sympsArr.length ? sympsArr.map(function(s){ return '▸ '+s; }).join('\n') : 'Sem toxicidade relatada.') + '\n\n' +
 '[PLANO DE CUIDADO SAE — ' + saePlan.length + ' diagnóstico(s)]\n' +
 saeText + '\n\n' +
@@ -1604,10 +1617,12 @@ saeText + '\n\n' +
 (conduta || 'Apenas registro assistencial.') + '\n' +
 (followupData ? 'Agendado para: ' + new Date(followupData).toLocaleString('pt-BR') : '');
 
-        const riskCls = state.riskLevel==='alto'?'risk-label-high':state.riskLevel==='moderado'?'risk-label-mod':'risk-label-low';
+        const riskCls    = state.riskLevel==='alto'?'risk-label-high':state.riskLevel==='moderado'?'risk-label-mod':'risk-label-low';
+        const riskClsVal = riscoValidado==='alto'?'risk-label-high':riscoValidado==='moderado'?'risk-label-mod':'risk-label-low';
         const visualHtml =
             '<strong>Paciente:</strong> ' + state.patient.initials + ' (' + state.patient.reg + ')<br>' +
-            '<strong>Risco:</strong> <span class="' + riskCls + '">' + riskLabels[state.riskLevel] + '</span><br>' +
+            '<strong>Risco Automático:</strong> <span class="' + riskCls + '">' + riskLabels[state.riskLevel] + '</span><br>' +
+            '<strong>Risco Validado:</strong> <span class="' + riskClsVal + '">' + riskLabels[riscoValidado] + '</span><br>' +
             '<strong>Enfermeiro(a):</strong> ' + enfermeiro + '<br><br>' +
             '<strong>Sintomas:</strong><br>' +
             (sympsArr.length ? sympsArr.map(function(s){ return '<span style="display:block;margin-left:8px">▸ ' + s + '</span>'; }).join('') : '<em>Nenhum</em>') + '<br>' +
@@ -1637,7 +1652,7 @@ saeText + '\n\n' +
                     else { const d = new Date(); d.setDate(d.getDate() + (conduta.includes('48h')?2:1)); data_prevista_tarefa = d.toISOString().split('T')[0]; }
                 }
                 await api('POST', '/consultas/'+state.consultaId+'/concluir', {
-                    classificacao_risco_validada:  state.riskLevel,
+                    classificacao_risco_validada:  riscoValidado,
                     texto_copiavel_prontuario:     plainText,
                     plano_cuidado_resumido:        saePlan.length ? saePlan[0].titulo : '',
                     conduta_seguimento_definida:   conduta,
