@@ -607,6 +607,24 @@ body {
 }
 .btn-primary:hover { background: var(--blue-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(23,92,157,0.4); }
 .btn-primary.full-width { width: 100%; justify-content: center; }
+.btn-danger {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 18px; border-radius: var(--r-xl);
+    background: #dc2626; color: #fff;
+    border: none; cursor: pointer;
+    font-weight: 600; font-size: 0.84rem; font-family: inherit;
+    transition: all 0.15s;
+}
+.btn-danger:hover { background: #b91c1c; transform: translateY(-1px); }
+.btn-danger-outline {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 18px; border-radius: var(--r-xl);
+    background: transparent; color: #dc2626;
+    border: 1.5px solid #dc2626; cursor: pointer;
+    font-weight: 600; font-size: 0.84rem; font-family: inherit;
+    transition: all 0.15s;
+}
+.btn-danger-outline:hover { background: #fef2f2; }
 
 .btn-secondary {
     display: inline-flex; align-items: center; gap: 6px;

@@ -67,6 +67,13 @@
         <div style="padding:20px 24px">
             <p id="modal-choice-desc" style="font-size:0.85rem;color:#64748b;margin-bottom:20px"></p>
             <div style="display:flex;flex-direction:column;gap:10px">
+                <button class="btn-outline-choice" id="btn-choice-ver-id" style="justify-content:flex-start;gap:12px;padding:14px 18px">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                    <div style="text-align:left">
+                        <div style="font-weight:600">Ver Identificação</div>
+                        <div style="font-size:0.72rem;opacity:.8">Visualizar e editar dados de identificação do paciente</div>
+                    </div>
+                </button>
                 <button class="btn-primary" id="btn-choice-seguimento" style="justify-content:flex-start;gap:12px;padding:14px 18px">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0"/><polyline points="12 8 12 12 14 14"/></svg>
                     <div style="text-align:left">
@@ -81,6 +88,33 @@
                         <div style="font-size:0.72rem;opacity:.8">Iniciar uma nova Consulta de Enfermagem</div>
                     </div>
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Inativar Paciente ── -->
+<div id="modal-inativar" class="modal-backdrop" style="display:none">
+    <div class="modal-box" style="max-width:380px">
+        <div class="modal-header">
+            <h2>Inativar Paciente</h2>
+            <button class="modal-close" id="close-modal-inativar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div style="padding:20px 24px">
+            <p style="font-size:0.85rem;color:#64748b;margin-bottom:16px">Esta ação removerá o paciente da lista principal. Ele poderá ser localizado via busca por iniciais ou prontuário, mas ficará em modo somente leitura.</p>
+            <div class="field-group" style="margin-bottom:20px">
+                <label>Motivo da Inativação</label>
+                <select id="motivo-inativacao" class="select-field">
+                    <option value="">Selecione...</option>
+                    <option value="teste">Registro de teste</option>
+                    <option value="obito">Óbito</option>
+                </select>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end">
+                <button class="btn-outline-choice" id="btn-cancel-inativar" style="padding:8px 18px">Cancelar</button>
+                <button class="btn-danger" id="btn-confirm-inativar" style="padding:8px 18px">Confirmar Inativação</button>
             </div>
         </div>
     </div>
@@ -329,6 +363,13 @@
 
             <!-- ── MÓDULO 1: IDENTIFICAÇÃO ── -->
             <section id="module-id" class="module">
+
+                <!-- Banner: paciente inativo (somente leitura) -->
+                <div id="banner-inativo" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:none;align-items:center;gap:10px">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span style="font-size:0.83rem;color:#dc2626;font-weight:600">Paciente Inativo — visualização somente leitura. Nenhuma alteração pode ser realizada.</span>
+                </div>
+
                 <div class="module-grid-2">
                     <div class="card">
                         <div class="card-header">
@@ -435,7 +476,11 @@
                                 <input type="text" id="pac-local-radioterapia" placeholder="Onde faz a radioterapia..." style="display:none">
                             </div>
                         </div>
-                        <div class="card-action-row">
+                        <div class="card-action-row" style="justify-content:space-between">
+                            <button class="btn-danger-outline" id="btn-inativar-paciente" style="display:none">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                                Inativar Paciente
+                            </button>
                             <button class="btn-primary" id="btn-salvar-id">
                                 Salvar e Ir para Triagem
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
@@ -604,18 +649,18 @@
                                     <span class="card-icon amber"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
                                     <h2 class="card-title">2. História da Saúde Pregressa</h2>
                                 </div>
-                                <div class="section-label">Comorbidade</div>
-                                <div style="display:flex;gap:16px;margin:5px 0">
-                                    <label class="rc-item"><input type="radio" name="fit_comorbidade_pre" value="nao"> Não</label>
-                                    <label class="rc-item"><input type="radio" name="fit_comorbidade_pre" value="sim"> Sim</label>
+                                <div class="section-label">Comorbidades</div>
+                                <div class="checkbox-list" style="margin-top:6px">
+                                    <label class="cb-item"><input type="checkbox" name="fit_comorbidade" value="has"> Hipertensão arterial</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_comorbidade" value="dm"> Diabetes mellitus</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_comorbidade" value="icc"> ICC</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_comorbidade" value="irc"> IRC</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_comorbidade" value="dpoc"> DPOC / Asma</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_comorbidade" value="tireoide"> Hipotireoidismo / Hipertireoidismo</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_comorbidade" value="coronario"> Coronariopatias</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_comorbidade" value="outros"> Outros:</label>
+                                    <input type="text" id="fit-comorbidade-outros" placeholder="Especificar" class="input-sm mt-4">
                                 </div>
-                                <input type="text" id="fit-comorbidade-desc" class="input-sm" placeholder="Descreva a(s) comorbidade(s)" style="width:100%;box-sizing:border-box;display:none">
-                                <div class="section-label mt-16">Cirurgia Prévia</div>
-                                <div style="display:flex;gap:16px;margin:5px 0">
-                                    <label class="rc-item"><input type="radio" name="fit_cirurgia_prev" value="nao"> Não</label>
-                                    <label class="rc-item"><input type="radio" name="fit_cirurgia_prev" value="sim"> Sim</label>
-                                </div>
-                                <input type="text" id="fit-cirurgia-desc" class="input-sm" placeholder="Qual cirurgia? Quando?" style="width:100%;box-sizing:border-box;display:none">
                             </div>
 
                             <div class="card">
@@ -679,6 +724,12 @@
                                 <label>Escala de Morse (pontos)</label>
                                 <input type="number" id="fit-morse" min="0" max="125" placeholder="0 – 125">
                             </div>
+                            <div class="section-label mt-16">Cirurgia Prévia</div>
+                            <div style="display:flex;gap:16px;margin:5px 0">
+                                <label class="rc-item"><input type="radio" name="fit_cirurgia_prev" value="nao"> Não</label>
+                                <label class="rc-item"><input type="radio" name="fit_cirurgia_prev" value="sim"> Sim</label>
+                            </div>
+                            <input type="text" id="fit-cirurgia-desc" class="input-sm" placeholder="Qual cirurgia? Quando?" style="width:100%;box-sizing:border-box;display:none">
                             <div class="section-label mt-16">Dor</div>
                             <div style="display:flex;gap:16px;margin:5px 0">
                                 <label class="rc-item"><input type="radio" name="fit_dor" value="nao"> Não</label>
@@ -1059,6 +1110,7 @@
 
                 <!-- Linha 4: Exame físico + Laboratorial -->
                 <div class="module-grid-2 mt-16">
+                    <div id="ef-card-padrao">
                     <div class="card">
                         <div class="card-header">
                             <span class="card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
@@ -1097,6 +1149,7 @@
                             </div>
                         </div>
                     </div>
+                    </div><!-- #ef-card-padrao -->
 
                     <div class="card">
                         <div class="card-header">
@@ -1261,8 +1314,9 @@
                         </div>
                         <!-- Exibido quando atrelado = sim -->
                         <div id="seg-atrelado-sim-area" style="display:none">
-                            <label style="font-size:0.78rem;font-weight:600;display:block;margin-bottom:4px">Data da Consulta de Referência</label>
-                            <input type="date" id="seg-data-consulta-ref" class="select-field" style="max-width:200px">
+                            <label style="font-size:0.78rem;font-weight:600;display:block;margin-bottom:6px">Última Consulta de Enfermagem</label>
+                            <div id="seg-data-consulta-ref-display" style="font-size:0.9rem;font-weight:600;color:#175C9D;padding:8px 12px;background:#eff6ff;border-radius:6px;display:inline-block"></div>
+                            <input type="hidden" id="seg-data-consulta-ref">
                         </div>
                         <!-- Exibido quando atrelado = não -->
                         <div id="seg-atrelado-nao-area" style="display:none">

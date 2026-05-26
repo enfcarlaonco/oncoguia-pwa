@@ -395,13 +395,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (p.diagnostico_oncologico||'—') + '</td>' +
                     '<td>' + (p.protocolo_atual||'—') + '</td>' +
                     '<td><span class="followup-badge nic" style="font-size:0.65rem">' + (p.status_paciente||'ativo') + '</span></td>' +
-                    '<td><button class="btn-abrir" data-id="' + p.id_paciente + '" data-reg="' + p.registro_instituicao + '" data-iniciais="' + p.iniciais_nome + '">Abrir</button></td>' +
+                    '<td><button class="btn-abrir" data-id="' + p.id_paciente + '" data-reg="' + p.registro_instituicao + '" data-iniciais="' + p.iniciais_nome + '" data-status="' + (p.status_paciente||'ativo') + '">Abrir</button></td>' +
                     '</tr>';
             }).join('');
             tbody.querySelectorAll('.btn-abrir').forEach(function(btn) {
                 btn.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    openPatient(btn.dataset.id, btn.dataset.reg, btn.dataset.iniciais);
+                    openPatient(btn.dataset.id, btn.dataset.reg, btn.dataset.iniciais, btn.dataset.status);
                 });
             });
         } catch(e) {
@@ -409,14 +409,99 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // ── Carrega dados do paciente nos campos de identificação ──
+    async function loadPatientIdentification(id) {
+        try {
+            const p = await api('GET', '/pacientes/' + id);
+            if (!p) return;
+            var setVal = function(elId, val) { var el = document.getElementById(elId); if (el) el.value = val || ''; };
+            setVal('reg-inst',              p.registro_instituicao);
+            setVal('pac-iniciais',          p.iniciais_nome);
+            setVal('pac-nascimento',        p.data_nascimento ? p.data_nascimento.split('T')[0] : '');
+            setVal('pac-sexo',              p.sexo);
+            setVal('pac-tel',               p.telefone_1);
+            setVal('pac-tel2',              p.telefone_2);
+            setVal('pac-cuidador',          p.nome_cuidador);
+            setVal('pac-tel-cuidador',      p.telefone_cuidador);
+            setVal('pac-dx',                p.diagnostico_oncologico);
+            setVal('pac-protocol',          p.protocolo_atual);
+            setVal('pac-ciclo',             p.ciclo_atual);
+            setVal('pac-ultima-qt',         p.data_ultima_qt ? p.data_ultima_qt.split('T')[0] : '');
+            setVal('pac-proxima-qt',        p.data_proxima_qt_prevista ? p.data_proxima_qt_prevista.split('T')[0] : '');
+            setVal('pac-data-diagnostico',  p.data_diagnostico ? p.data_diagnostico.split('T')[0] : '');
+            setVal('pac-tipo-tratamento',   p.tipo_tratamento);
+            if (p.faz_radioterapia) {
+                var rxtEl = document.querySelector('input[name="pac-radioterapia"][value="' + p.faz_radioterapia + '"]');
+                if (rxtEl) rxtEl.checked = true;
+                var localEl = document.getElementById('pac-local-radioterapia');
+                if (localEl) { localEl.style.display = p.faz_radioterapia === 'sim' ? 'block' : 'none'; localEl.value = p.local_radioterapia || ''; }
+            }
+            if (p.alergia) {
+                var alEl = document.querySelector('input[name="pac-alergia"][value="' + p.alergia + '"]');
+                if (alEl) alEl.checked = true;
+                var alDescEl = document.getElementById('pac-alergia-desc');
+                if (alDescEl) { alDescEl.style.display = p.alergia === 'sim' ? 'block' : 'none'; alDescEl.value = p.alergia_descricao || ''; }
+            }
+            // Atualiza display
+            if (p.iniciais_nome) {
+                document.getElementById('display-patient-name').textContent = p.iniciais_nome;
+                document.getElementById('patient-avatar').textContent = p.iniciais_nome.substring(0,2);
+            }
+            if (p.registro_instituicao) document.getElementById('display-reg').textContent = p.registro_instituicao;
+            if (p.ciclo_atual)          document.getElementById('display-ciclo').textContent = p.ciclo_atual;
+            if (p.protocolo_atual)      document.getElementById('display-protocol').textContent = p.protocolo_atual;
+            // Calcular idade
+            if (p.data_nascimento) {
+                var nasc = new Date(p.data_nascimento), hoje = new Date();
+                var idade = hoje.getFullYear() - nasc.getFullYear();
+                var m = hoje.getMonth() - nasc.getMonth();
+                if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
+                var idadeEl = document.getElementById('pac-idade');
+                if (idadeEl) idadeEl.value = isNaN(idade) ? '' : idade;
+            }
+        } catch(e) { console.warn('[loadPatientIdentification]', e); }
+    }
+
+    // ── Aplica modo somente leitura (paciente inativo) ──
+    function setReadOnlyMode(ativo) {
+        var banner = document.getElementById('banner-inativo');
+        var btnSalvar = document.getElementById('btn-salvar-id');
+        var btnInativar = document.getElementById('btn-inativar-paciente');
+        if (!ativo) {
+            // Modo leitura
+            if (banner)     { banner.style.display = 'flex'; }
+            if (btnSalvar)  { btnSalvar.style.display = 'none'; }
+            if (btnInativar){ btnInativar.style.display = 'none'; }
+            document.querySelectorAll('#module-id input, #module-id select, #module-id textarea').forEach(function(el){ el.disabled = true; });
+        } else {
+            // Modo edição normal
+            if (banner)     { banner.style.display = 'none'; }
+            if (btnSalvar)  { btnSalvar.style.display = ''; }
+            if (btnInativar){ btnInativar.style.display = state.patient.id ? '' : 'none'; }
+            document.querySelectorAll('#module-id input, #module-id select, #module-id textarea').forEach(function(el){ el.disabled = false; });
+        }
+    }
+
     // ── Abre paciente: verifica última consulta e exibe modal de escolha ──
-    async function openPatient(id, reg, iniciais) {
+    async function openPatient(id, reg, iniciais, status) {
         state.patient.id       = parseInt(id);
         state.patient.reg      = reg;
         state.patient.initials = iniciais;
+        state.patient.inativo  = (status === 'inativo');
+
         // Busca última consulta
         try { state.ultimaConsulta = await api('GET', '/consultas/paciente/' + id + '/ultima-concluida'); }
         catch(e) { state.ultimaConsulta = null; }
+
+        // Paciente inativo: vai direto para identificação em modo leitura
+        if (state.patient.inativo) {
+            await loadPatientIdentification(id);
+            setupPatientDisplay();
+            showApp();
+            setReadOnlyMode(false);
+            activateModule('module-id');
+            return;
+        }
 
         if (state.ultimaConsulta) {
             const dataFmt = new Date(state.ultimaConsulta.data_hora).toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
@@ -433,6 +518,16 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('modal-consulta-choice').style.display = 'none';
     });
 
+    document.getElementById('btn-choice-ver-id').addEventListener('click', async function() {
+        document.getElementById('modal-consulta-choice').style.display = 'none';
+        await loadPatientIdentification(state.patient.id);
+        setupPatientDisplay();
+        showApp();
+        setReadOnlyMode(true);
+        document.getElementById('btn-inativar-paciente').style.display = '';
+        activateModule('module-id');
+    });
+
     document.getElementById('btn-choice-seguimento').addEventListener('click', function() {
         document.getElementById('modal-consulta-choice').style.display = 'none';
         setupPatientDisplay();
@@ -445,6 +540,30 @@ document.addEventListener('DOMContentLoaded', function() {
         startNovaConsulta();
     });
 
+    // ── Inativar Paciente ──
+    document.getElementById('btn-inativar-paciente').addEventListener('click', function() {
+        document.getElementById('motivo-inativacao').value = '';
+        document.getElementById('modal-inativar').style.display = 'flex';
+    });
+    document.getElementById('close-modal-inativar').addEventListener('click', function() {
+        document.getElementById('modal-inativar').style.display = 'none';
+    });
+    document.getElementById('btn-cancel-inativar').addEventListener('click', function() {
+        document.getElementById('modal-inativar').style.display = 'none';
+    });
+    document.getElementById('btn-confirm-inativar').addEventListener('click', async function() {
+        const motivo = document.getElementById('motivo-inativacao').value;
+        if (!motivo) { alert('Selecione o motivo da inativação.'); return; }
+        try {
+            await api('PATCH', '/pacientes/' + state.patient.id + '/inativar', { motivo_inativacao: motivo });
+            document.getElementById('modal-inativar').style.display = 'none';
+            alert('Paciente inativado com sucesso.');
+            showSearch();
+        } catch(e) {
+            alert('Erro ao inativar paciente.');
+        }
+    });
+
     async function startNovaConsulta() {
         try {
             const c = await api('POST', '/consultas', { id_paciente: state.patient.id, tipo_consulta: 'retorno' });
@@ -452,6 +571,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch(e) {}
         var rSel = document.getElementById('risco-validado');
         if (rSel) { rSel.value = 'baixo'; delete rSel.dataset.manualOverride; }
+        setReadOnlyMode(true);
         setupPatientDisplay();
         showApp();
         activateModule('module-triage');
@@ -502,7 +622,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('form-inicio-tratamento').style.display = 'none';
         // Limpar campos de texto da anamnese estendida
         ['fit-escolaridade','fit-profissao','fit-naturalidade','fit-cidade-residencia','fit-religiao',
-         'fit-comorbidade-desc','fit-cirurgia-desc','fit-hist-familiar-desc',
+         'fit-comorbidade-outros','fit-cirurgia-desc','fit-hist-familiar-desc',
          'fit-dum','fit-morse','fit-dor-local','fit-dor-eva',
          'fit-dx-histologico','fit-dx-data','fit-estadiamento-desc','fit-protocolo-proposto',
          'fit-mucosa-oral','fit-ox-dispositivo','fit-ox-fr','fit-ox-spo2','fit-ox-o2',
@@ -516,11 +636,17 @@ document.addEventListener('DOMContentLoaded', function() {
             var el = document.getElementById(id);
             if (el) el.style.display = 'none';
         });
-        ['fit-comorbidade-desc','fit-cirurgia-desc','fit-hist-familiar-desc',
+        ['fit-cirurgia-desc','fit-hist-familiar-desc',
          'fit-estadiamento-desc','fit-integridade-desc'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.style.display = 'none';
         });
+        // Restaurar ef-card-padrao
+        var efCard = document.getElementById('ef-card-padrao');
+        if (efCard) efCard.style.display = '';
+        // Resetar modo leitura
+        setReadOnlyMode(true);
+        document.getElementById('btn-inativar-paciente').style.display = 'none';
         ['peso','altura','asc','ef-pa','ef-fc','ef-fr','ef-temp','ef-sato2',
          'ef-obs','medicamentos','comorbidade-outros','suporte-outro',
          'nutricao-outros','outros-sintomas',
@@ -667,6 +793,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('tipo-outro-group').style.display = val === 'Outro' ? 'block' : 'none';
         const isAbertura = val === 'Consulta de início de tratamento' || val === 'Consulta de troca de protocolo';
         document.getElementById('form-inicio-tratamento').style.display = isAbertura ? 'block' : 'none';
+        // Oculta exame físico padrão nas consultas de abertura (seção 7 da anamnese o substitui)
+        var efCard = document.getElementById('ef-card-padrao');
+        if (efCard) efCard.style.display = isAbertura ? 'none' : '';
     });
 
     // ── ANAMNESE ESTENDIDA — listeners de campos condicionais ──
@@ -1168,6 +1297,21 @@ document.addEventListener('DOMContentLoaded', function() {
             if (metasPanel) metasPanel.style.display = 'block';
             if (miniTriag)  miniTriag.style.display  = 'block';
             if (ctcae)      ctcae.style.display      = 'none';
+            // Preencher data da última consulta automaticamente
+            var display = document.getElementById('seg-data-consulta-ref-display');
+            var hidden  = document.getElementById('seg-data-consulta-ref');
+            if (display && hidden) {
+                if (state.ultimaConsulta) {
+                    var dFmt = new Date(state.ultimaConsulta.data_hora).toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+                    display.textContent  = dFmt;
+                    display.style.color  = '#175C9D';
+                    hidden.value = state.ultimaConsulta.data_hora.split('T')[0];
+                } else {
+                    display.textContent  = 'Não existe Consulta de Enfermagem para esse paciente.';
+                    display.style.color  = '#dc2626';
+                    hidden.value = '';
+                }
+            }
             // Exibir contexto da última consulta se existir
             if (state.ultimaConsulta && ctxCard) ctxCard.style.display = 'block';
         } else if (atrelado === 'nao') {
@@ -1762,9 +1906,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const peso         = (document.getElementById('peso')?.value || '');
         const altura       = (document.getElementById('altura')?.value || '');
         const asc          = (document.getElementById('asc')?.value || '');
-        const pa           = (document.getElementById('ef-pa')?.value || '');
-        const temp         = (document.getElementById('ef-temp')?.value || '');
-        const sato2        = (document.getElementById('ef-sato2')?.value || '');
+        const isAberturaRel = tipoConsulta === 'Consulta de início de tratamento' || tipoConsulta === 'Consulta de troca de protocolo';
+        const pa    = isAberturaRel ? (document.getElementById('fit-cv-pa')?.value || '')   : (document.getElementById('ef-pa')?.value || '');
+        const temp  = isAberturaRel ? ''                                                      : (document.getElementById('ef-temp')?.value || '');
+        const sato2 = isAberturaRel ? (document.getElementById('fit-ox-spo2')?.value || '') : (document.getElementById('ef-sato2')?.value || '');
 
         const sympsArr = Object.entries(state.symptoms)
             .filter(function(e){ return e[1].grade > 0 || e[1].isRisk; })
@@ -1858,8 +2003,8 @@ saeText + '\n\n' +
                         naturalidade:          txv('fit-naturalidade'),
                         cidade_residencia:     txv('fit-cidade-residencia'),
                         religiao:              txv('fit-religiao'),
-                        comorbidade_pre:       rv('fit_comorbidade_pre'),
-                        comorbidade_desc:      txv('fit-comorbidade-desc'),
+                        comorbidades:          chk('fit_comorbidade'),
+                        comorbidade_outros:    txv('fit-comorbidade-outros'),
                         cirurgia_prev:         rv('fit_cirurgia_prev'),
                         cirurgia_desc:         txv('fit-cirurgia-desc'),
                         hist_familiar:         rv('fit_hist_familiar'),
