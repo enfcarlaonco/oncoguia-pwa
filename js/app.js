@@ -459,6 +459,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 var idadeEl = document.getElementById('pac-idade');
                 if (idadeEl) idadeEl.value = isNaN(idade) ? '' : idade;
             }
+            // Banner de inativo: motivo e data
+            var detailEl = document.getElementById('banner-inativo-detail');
+            if (detailEl) {
+                if (p.status_paciente === 'inativo') {
+                    var motivoLabel = p.motivo_inativacao === 'obito' ? 'Óbito' : (p.motivo_inativacao === 'teste' ? 'Registro de teste' : (p.motivo_inativacao || ''));
+                    var dataInativ = p.data_inativacao ? new Date(p.data_inativacao).toLocaleDateString('pt-BR') : '';
+                    var inativaInfo = '';
+                    if (motivoLabel) inativaInfo += 'Motivo: ' + motivoLabel;
+                    if (dataInativ)  inativaInfo += (inativaInfo ? ' | ' : '') + 'Data: ' + dataInativ;
+                    if (p.inativado_by_user_name) inativaInfo += ' | Por: ' + p.inativado_by_user_name;
+                    detailEl.textContent = inativaInfo ? '(' + inativaInfo + ')' : '';
+                } else {
+                    detailEl.textContent = '';
+                }
+            }
         } catch(e) { console.warn('[loadPatientIdentification]', e); }
     }
 
@@ -555,7 +570,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const motivo = document.getElementById('motivo-inativacao').value;
         if (!motivo) { alert('Selecione o motivo da inativação.'); return; }
         try {
-            await api('PATCH', '/pacientes/' + state.patient.id + '/inativar', { motivo_inativacao: motivo });
+            await api('PATCH', '/pacientes/' + state.patient.id + '/inativar', {
+                motivo_inativacao:      motivo,
+                inativado_by_user_name: state.currentUser ? state.currentUser.name : null
+            });
             document.getElementById('modal-inativar').style.display = 'none';
             alert('Paciente inativado com sucesso.');
             showSearch();
