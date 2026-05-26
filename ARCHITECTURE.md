@@ -1,8 +1,8 @@
-# OncoGuia — Arquitetura v1.3.0
+# OncoGuia — Arquitetura v1.4.0
 
-**Marco estável:** 17/05/2026  
-**Backend tag:** `v1.3.0` — `oncoguia-api` — commit `c05d2d9` (Railway)  
-**Frontend tag:** `v1.3.0` — `oncoguia-pwa` — commit `7e2084a` (GitHub Pages)
+**Marco estável:** 26/05/2026
+**Backend tag:** `v1.4.0` — `oncoguia-api` — commit `cf88195` (Railway)
+**Frontend tag:** `v1.4.0` — `oncoguia-pwa` — commit `1222640` (GitHub Pages)
 
 | Versão | Backend | Frontend | Data |
 |---|---|---|---|
@@ -10,6 +10,7 @@
 | v1.1.0 | `1ea01de` | `cf021e8` | 17/05/2026 |
 | v1.2.0 | `74cb8ea` | `cde9b41` | 17/05/2026 |
 | v1.3.0 | `c05d2d9` | `7e2084a` | 17/05/2026 |
+| v1.4.0 | `cf88195` | `1222640` | 26/05/2026 |
 
 ---
 
@@ -30,9 +31,10 @@
 ### `/api/pacientes`
 | Método | Rota | Descrição |
 |---|---|---|
-| GET | `/busca?q=` | Busca por registro ou iniciais (q vazio = todos) |
-| GET | `/:id` | Visão longitudinal completa do paciente |
-| POST | `/` | Cadastra novo paciente |
+| GET | `/busca?q=` | Busca por registro ou iniciais. `q` vazio retorna apenas pacientes **ativos**, ordenados por `iniciais_nome ASC`. `q` preenchido inclui inativos no resultado. |
+| GET | `/:id` | Visão longitudinal completa do paciente (inclui `status_paciente`, `motivo_inativacao`, `data_inativacao`, `inativado_by_user_name`) |
+| POST | `/` | Cadastra novo paciente (upsert por `registro_instituicao`) |
+| PATCH | `/:id/inativar` | Inativa o paciente. Payload: `{ motivo_inativacao, inativado_by_user_name }`. Valores válidos: `teste` \| `obito`. Salva `data_inativacao = NOW()`. |
 
 ### `/api/consultas`
 | Método | Rota | Descrição |
@@ -40,12 +42,12 @@
 | POST | `/` | Abre nova consulta (status `rascunho`) |
 | PUT | `/:id/sintomas` | Salva triagem CTCAE — requer `updated_by_user_name` |
 | PUT | `/:id/plano` | Salva diagnósticos NANDA + intervenções NIC + resultados NOC — requer `updated_by_user_name` |
-| POST | `/:id/concluir` | Conclui consulta, gera tarefa opcional |
+| POST | `/:id/concluir` | Conclui consulta, gera tarefa opcional, salva anamnese se presente |
 | POST | `/:id/orientacoes` | Salva orientações ao paciente e cuidador — requer `updated_by_user_name` |
 | GET | `/paciente/:id_paciente` | Histórico de consultas do paciente (array, pode ser vazio) |
-| GET | `/paciente/:id_paciente/ultima-concluida` | Última consulta concluída com plano resumido |
+| GET | `/paciente/:id_paciente/ultima-concluida` | Última consulta concluída com plano resumido (usada no seguimento atrelado) |
 | GET | `/:id/plano` | Plano SAE completo (NANDA + NIC + NOC) |
-| GET | `/:id` | Consulta completa com todos os subtables |
+| GET | `/:id` | Consulta completa com todos os subtables, incluindo campo `anamnese` (dados JSONB de `consulta_anamnese` ou `null`) |
 
 > **Ordem crítica no Express:** `GET /paciente/:id` deve preceder `GET /:id` para evitar captura indevida do literal "paciente" como ID.
 
@@ -127,22 +129,23 @@
 ### Tabelas transacionais
 | Tabela | Chave | Descrição |
 |---|---|---|
-| `pacientes` | `id_paciente` | Cadastro de pacientes oncológicos |
+| `pacientes` | `id_paciente` | Cadastro de pacientes oncológicos (inclui status ativo/inativo) |
 | `consultas_enfermagem` | `id_consulta` | Consulta principal com dados clínicos e status |
 | `consulta_sintomas_ctcae` | `id_consulta` | Sintomas CTCAE da triagem |
 | `consulta_diagnosticos` | `id_consulta` | Diagnósticos NANDA selecionados no plano SAE |
 | `consulta_intervencoes` | `id_consulta` | Intervenções NIC selecionadas no plano SAE |
 | `consulta_resultados_esperados` | `id_consulta` | Resultados NOC do plano SAE |
 | `consulta_orientacoes` | `id_consulta` | Orientações ao paciente e cuidador por NIC |
+| `consulta_anamnese` | `id_consulta` | Anamnese estendida em JSONB (Fase 10) — apenas para consultas de abertura |
+| `consulta_exame_fisico` | `id_consulta` | Dados do exame físico (vitais mapeados da anamnese de abertura) |
 | `seguimentos_enfermagem` | `id_seguimento` | Seguimentos registrados |
 | `tarefas_assistenciais` | `id_tarefa` | Tarefas geradas por consultas ou manualmente |
-| `pendencias_paciente` | `id_pendencia` | Pendências clínicas e administrativas do paciente (Fase 7) |
+| `pendencias_paciente` | `id_pendencia` | Pendências clínicas e administrativas do paciente |
 
-### Tabelas de apoio (criadas na Fase 1, ainda não utilizadas pelo frontend)
+### Tabelas de apoio (criadas na Fase 1)
 | Tabela | Descrição |
 |---|---|
-| `consulta_comorbidades` | Comorbidades da consulta |
-| `consulta_exame_fisico` | Dados do exame físico |
+| `consulta_comorbidades` | Comorbidades da consulta (sem uso ativo na UI) |
 | `consulta_exames_laboratoriais` | Resultados laboratoriais |
 | `planos_seguimento` | Planejamento de seguimento |
 
@@ -154,9 +157,12 @@
 | `seguimentos_enfermagem` | `created_by_user_name`, `updated_by_user_name` |
 | `pacientes` | `created_by_user_name`, `updated_by_user_name` |
 
-### Colunas adicionadas na Fase 7 em `pendencias_paciente`
-A tabela foi criada na Fase 1 com colunas mínimas. As seguintes foram adicionadas via migração segura:
+### Colunas adicionadas na Fase 6
+| Tabela | Coluna | Tipo | Descrição |
+|---|---|---|---|
+| `tarefas_assistenciais` | `descricao` | `TEXT` | Descrição livre da tarefa (opcional) |
 
+### Colunas adicionadas na Fase 7 em `pendencias_paciente`
 | Coluna | Tipo | Descrição |
 |---|---|---|
 | `id_consulta_origem` | INTEGER FK | Consulta que originou a pendência (opcional) |
@@ -168,67 +174,127 @@ A tabela foi criada na Fase 1 com colunas mínimas. As seguintes foram adicionad
 | `resolved_at` | TIMESTAMPTZ | Momento da resolução |
 | `created_at` | TIMESTAMPTZ DEFAULT NOW() | Criação (usado na ordenação) |
 
-### Estrutura completa de `pendencias_paciente`
+### Colunas adicionadas na Fase 10 em `pacientes`
 | Coluna | Tipo | Descrição |
 |---|---|---|
-| `id_pendencia` | SERIAL PK | Identificador |
-| `id_paciente` | INTEGER FK | Referência a `pacientes` |
-| `id_consulta_origem` | INTEGER FK | Consulta de origem (opcional) |
-| `categoria` | VARCHAR(40) | clinica \| medicamentosa \| social \| administrativa \| laboratorial \| psicologica \| nutricional \| adesao \| acesso_rede |
-| `descricao` | TEXT | Descrição do problema ou situação |
-| `prioridade` | VARCHAR(20) | critica \| alta \| moderada \| baixa |
-| `status` | VARCHAR(20) | aberta \| em_acompanhamento \| resolvida \| cancelada |
-| `conduta_atual` | TEXT | O que foi realizado para resolver |
-| `data_abertura` | TIMESTAMPTZ | Preenchida automaticamente na criação (legado) |
-| `created_at` | TIMESTAMPTZ | Criação — usada na ordenação |
-| `data_fechamento` | TIMESTAMPTZ | Preenchida ao resolver (legado, sincronizado com `resolved_at`) |
-| `resolved_at` | TIMESTAMPTZ | Momento da resolução |
-| `created_by_user_name` | TEXT | Quem registrou a pendência |
-| `resolved_by_user_name` | TEXT | Quem resolveu a pendência |
+| `data_diagnostico` | DATE | Data do diagnóstico oncológico |
+| `tipo_tratamento` | VARCHAR(30) | Modalidade de tratamento (quimioterapia, etc.) |
+| `faz_radioterapia` | VARCHAR(5) | `'sim'` \| `'nao'` |
+| `local_radioterapia` | TEXT | Localização da radioterapia (quando aplicável) |
+| `alergia` | VARCHAR(5) | `'sim'` \| `'nao'` |
+| `alergia_descricao` | TEXT | Descrição da alergia (quando aplicável) |
 
-> **Regra fundamental:** pendências **nunca** são excluídas fisicamente. Descarte usa `status = 'cancelada'`. Histórico completo sempre preservado.
-
-### Coluna adicionada na Fase 6
-| Tabela | Coluna | Tipo | Descrição |
-|---|---|---|---|
-| `tarefas_assistenciais` | `descricao` | `TEXT` | Descrição livre da tarefa (opcional) |
-
-### Estrutura de `tarefas_assistenciais` (colunas relevantes)
+### Colunas adicionadas na Fase 10 em `seguimentos_enfermagem`
 | Coluna | Tipo | Descrição |
 |---|---|---|
-| `id_tarefa` | SERIAL PK | Identificador da tarefa |
-| `id_paciente` | INTEGER FK | Referência a `pacientes` |
-| `origem` | VARCHAR | `'manual'` ou `'consulta'` |
-| `origem_clinica_id` | INTEGER | `id_consulta` de origem (opcional) |
-| `tipo_tarefa` | VARCHAR | Ex: `retorno`, `avaliacao_urgente`, `ligacao`, `contato_telefonico` |
-| `descricao` | TEXT | Descrição livre (Fase 6) |
-| `prioridade` | VARCHAR | `critica` \| `alta` \| `moderada` \| `baixa` \| `padrao` |
-| `status` | VARCHAR | `pendente` \| `em_andamento` \| `concluida` \| `cancelada` |
-| `conduta_realizada` | TEXT | Resultado do atendimento (mapeado de `resultado` no PUT /concluir) |
-| `efetividade` | VARCHAR | `resolvido` \| `melhora_parcial` \| `sem_melhora` \| `piora` \| `encaminhado` |
-| `responsavel` | TEXT | Nome do responsável |
-| `data_prevista` | TIMESTAMPTZ | Data/hora prevista para execução |
-| `data_conclusao` | TIMESTAMPTZ | Preenchido automaticamente ao concluir |
-| `created_by_user_name` | TEXT | Quem criou |
-| `completed_by_user_name` | TEXT | Quem concluiu |
-| `updated_by_user_name` | TEXT | Última atualização |
+| `atrelado_consulta` | VARCHAR(5) | `'sim'` \| `'nao'` |
+| `data_consulta_referencia` | DATE | Data da consulta de referência para seguimento atrelado |
+| `motivo_seguimento` | TEXT | Motivo/observação do seguimento |
 
-### Estrutura de `consulta_orientacoes`
+### Colunas adicionadas na Fase 11 / v1.4.0 em `pacientes`
+| Coluna | Tipo | Descrição |
+|---|---|---|
+| `status_paciente` | TEXT DEFAULT `'ativo'` | Status do paciente: `'ativo'` \| `'inativo'` |
+| `motivo_inativacao` | VARCHAR(20) | Motivo da inativação: `'teste'` \| `'obito'` |
+| `data_inativacao` | TIMESTAMPTZ | Momento em que o paciente foi inativado |
+| `inativado_by_user_name` | TEXT | Nome do usuário que realizou a inativação |
+
+### Estrutura de `consulta_anamnese` (Fase 10)
 ```sql
-CREATE TABLE consulta_orientacoes (
-    id_orientacao   SERIAL          PRIMARY KEY,
-    id_consulta     INTEGER         NOT NULL
-                    REFERENCES consultas_enfermagem(id_consulta) ON DELETE CASCADE,
-    codigo_nic      INTEGER         REFERENCES intervencoes_nic(codigo_nic),
-    tipo            VARCHAR(20)     NOT NULL,   -- 'paciente' | 'cuidador'
-    texto           TEXT            NOT NULL,
-    created_at      TIMESTAMPTZ     DEFAULT NOW()
+CREATE TABLE consulta_anamnese (
+    id_consulta INTEGER PRIMARY KEY
+                REFERENCES consultas_enfermagem(id_consulta) ON DELETE CASCADE,
+    dados       JSONB NOT NULL DEFAULT '{}',
+    created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 ```
 
+> O campo `dados` armazena todo o formulário de anamnese estendida como JSONB. Chaves principais: `escolaridade`, `profissao`, `comorbidades` (array), `cirurgia_prev`, `hist_familiar`, `habitos` (array), `dor`, `dx_histologico`, `estadiamento`, `protocolo_proposto`, `cv_pa`, `cv_fc`, `ox_spo2`, `mucosa_oral`, entre outros.
+
 ---
 
-## 4. Fluxo Completo do Autosave SAE
+## 4. Módulo de Pacientes — Comportamento v1.4.0
+
+### Lista de pacientes
+- Ao abrir o módulo **Pacientes**, a lista exibe apenas pacientes com `status_paciente = 'ativo'`.
+- Ordenação: `iniciais_nome ASC`.
+- A busca por iniciais ou registro (`q` não vazio) retorna **todos** os pacientes — inclusive inativos.
+- Paciente inativo na lista exibe badge `inativo` (visível apenas via busca).
+
+### Ações por paciente (modal de escolha)
+Ao clicar em "Abrir" em qualquer paciente, o sistema exibe as opções **nesta ordem**:
+
+1. **Ver Identificação** — carrega dados cadastrais na aba Identificação. Se o paciente estiver ativo, mostra o botão "Inativar Paciente". Se inativo, abre diretamente em modo somente leitura (sem exibir o modal).
+2. **Dar Seguimento** — abre o módulo de seguimento para o paciente selecionado.
+3. **Realizar Nova Consulta** — inicia uma nova consulta vinculada ao paciente.
+
+**Paciente inativo:** o modal não é exibido. O sistema vai diretamente para a aba Identificação em modo somente leitura.
+
+### Inativação de paciente
+- Botão **"Inativar Paciente"** visível na aba Identificação apenas quando o paciente é ativo e foi acessado via "Ver Identificação".
+- Abre modal com select de motivo (`Registro de teste` / `Óbito`).
+- Ao confirmar:
+  - Backend: `status_paciente = 'inativo'`, `motivo_inativacao`, `data_inativacao = NOW()`, `inativado_by_user_name` salvos via `PATCH /api/pacientes/:id/inativar`.
+  - Frontend: retorna à tela de busca de pacientes.
+- Validação backend: motivo obrigatório; aceita apenas `teste` ou `obito`.
+
+### Modo somente leitura (paciente inativo)
+- Banner vermelho no topo da aba Identificação: **"Paciente Inativo — visualização somente leitura."**
+- Banner exibe detalhe: motivo, data e responsável pela inativação.
+- Todos os campos da aba Identificação ficam desabilitados (`disabled`).
+- Botões "Salvar Identificação" e "Inativar Paciente" ficam ocultos.
+- Botões "Dar Seguimento" e "Realizar Nova Consulta" **não são exibidos** para pacientes inativos.
+- Dados históricos (consultas, seguimentos, tarefas, pendências) permanecem acessíveis para consulta.
+- **Nenhum dado é excluído.** A inativação é lógica, não física.
+
+---
+
+## 5. Anamnese Estendida (Fase 10 / v1.4.0)
+
+### Quando é exibida
+O formulário de anamnese é apresentado **exclusivamente** para os tipos de consulta:
+- Consulta de início de tratamento
+- Consulta de troca de protocolo
+
+Para todos os outros tipos, o formulário permanece oculto e o card de Exame Físico padrão é exibido normalmente.
+
+### Estrutura do formulário (7 seções)
+1. Dados Pessoais e Socioeconômicos
+2. Saúde Pregressa (comorbidades, cirurgia prévia no módulo Condição de Saúde)
+3. História Familiar
+4. Hábitos de Vida
+5. Condição de Saúde (inclui Cirurgia Prévia, Dor, Esvaziamento Axilar)
+6. Doença Atual (diagnóstico histológico, estadiamento, protocolo proposto)
+7. Exame Físico Completo (substitui o card padrão de Exame Físico nestas consultas)
+
+### Persistência
+- Ao concluir a consulta, o campo `anamnese` é enviado no payload de `POST /api/consultas/:id/concluir`.
+- Backend persiste em `consulta_anamnese.dados` (JSONB upsert).
+- Vitais da anamnese (cv_pa, cv_fc, ox_fr, ox_spo2, mucosa_oral) são mapeados para `consulta_exame_fisico` para rastreamento longitudinal.
+- `GET /api/consultas/:id` retorna o campo `anamnese` com os dados salvos.
+
+### Limitação atual (melhoria futura)
+O preenchimento automático dos campos do formulário ao reabrir uma consulta existente **não está implementado no frontend**. O dado está disponível via API (`GET /api/consultas/:id → anamnese`), porém não há fluxo de "edição de consulta existente" na UI. Cada atendimento inicia uma nova consulta. Esta funcionalidade está registrada como melhoria futura.
+
+---
+
+## 6. Seguimento Atrelado à Última Consulta
+
+### Comportamento
+Ao clicar em "Dar Seguimento" e selecionar "Este seguimento está atrelado a uma consulta de Enfermagem? → Sim":
+
+1. O sistema busca automaticamente a última consulta concluída via `GET /api/consultas/paciente/:id/ultima-concluida`.
+2. Se existir consulta concluída:
+   - Exibe: `Última consulta de enfermagem: DD/MM/AAAA HH:mm — Tipo: [tipo_consulta]`
+   - Vincula automaticamente `id_consulta_origem` ao seguimento.
+3. Se não existir consulta concluída:
+   - Exibe: **"Não existe Consulta de Enfermagem para esse paciente."**
+   - O seguimento atrelado não pode ser salvo sem consulta de referência.
+4. **Não é possível escolher data manualmente** neste fluxo. A data é sempre derivada da última consulta real.
+
+---
+
+## 7. Fluxo Completo do Autosave SAE
 
 ```
 Usuário seleciona NANDA → abre painel de NIC/NOC
@@ -255,7 +321,7 @@ As chamadas [1] e [2] ocorrem sequencialmente dentro do mesmo `setTimeout`. Falh
 
 ---
 
-## 5. Estrutura de `state.plano`
+## 8. Estrutura de `state.plano`
 
 ```javascript
 state.plano = [
@@ -270,8 +336,7 @@ state.plano = [
                 nome: "Redução da Ansiedade",
                 orientacao_paciente: "texto completo da orientação ao paciente",
                 orientacao_cuidador: "texto completo da orientação ao cuidador"
-            },
-            // ... mais NICs
+            }
         ],
         nocs: [
             {
@@ -280,8 +345,7 @@ state.plano = [
                 nome:  "Nível de Ansiedade"
             }
         ]
-    },
-    // ... mais diagnósticos
+    }
 ]
 ```
 
@@ -291,7 +355,7 @@ state.plano = [
 
 ---
 
-## 6. Payload de Orientações
+## 9. Payload de Orientações
 
 ### Request — `POST /api/consultas/:id/orientacoes`
 ```json
@@ -313,7 +377,7 @@ state.plano = [
 ```
 
 **Regras:**
-- Apaga e reinserere todas as orientações da consulta (DELETE + INSERT em transação)
+- Apaga e reinsere todas as orientações da consulta (DELETE + INSERT em transação)
 - Registros com `texto` vazio ou apenas espaços **não são enviados** (filtrado no frontend)
 - Se `updated_by_user_name` ausente → `401`
 - Se `id_consulta` inexistente → `404`
@@ -326,21 +390,23 @@ state.plano = [
 
 ---
 
-## 7. Dependências Críticas Frontend ↔ Backend
+## 10. Dependências Críticas Frontend ↔ Backend
 
 | Dependência | Frontend | Backend | Risco se quebrar |
 |---|---|---|---|
-| `estado.currentUser.name` em todos os requests | `app.js` → todos os `api()` calls | Validação `updated_by_user_name` em PUT/POST/PATCH | Retorna 401, bloqueia salvamento |
+| `state.currentUser.name` em todos os requests | `app.js` → todos os `api()` calls | Validação `updated_by_user_name` em PUT/POST/PATCH | Retorna 401, bloqueia salvamento |
 | Ordem das rotas no Express | — | `GET /paciente/:id` antes de `GET /:id` em `consultas.js` | "paciente" seria tratado como ID numérico |
 | `nicDataCache[codigo_nic]` populado antes de montar o plano | `app.js` → `buildDxPanel()` | — | Orientações ficam em branco no plano |
 | `state.consultaId` definido antes do autosave | `app.js` → `autoSavePlano()` | `PUT /:id/plano`, `POST /:id/orientacoes` | Requests para `/undefined/plano` |
 | `ORIENT_CUIDADOR_MAP` como fallback | `app.js` → `nicDataCache` | `intervencoes_nic.contexto_uso` (parcialmente populado) | Orientação ao cuidador em branco |
 | Transação DELETE + INSERT em orientações | — | `POST /:id/orientacoes` | Orientações duplicadas se chamado duas vezes |
 | `ON DELETE CASCADE` em `consulta_orientacoes` | — | FK para `consultas_enfermagem` | Limpeza automática ao excluir consulta |
+| `state.patient.inativo` verificado antes de Dar Seguimento / Nova Consulta | `app.js` → `openPatient()` | — | Paciente inativo poderia receber novo registro |
+| `GET /consultas/paciente/:id/ultima-concluida` antes de exibir seguimento atrelado | `app.js` → `aplicarVinculoSeguimento()` | — | Seguimento sem consulta real de referência |
 
 ---
 
-## 8. Painel Agenda do Enfermeiro (Fase 6)
+## 11. Painel Agenda do Enfermeiro (Fase 6)
 
 ### Fluxo de carregamento
 
@@ -376,15 +442,15 @@ renderTarefas(tarefas) — tabela com cores por prioridade
 
 ### Modal "Nova Tarefa"
 
-**Campos:** tipo_tarefa (select), descrição (textarea), prioridade (select), data prevista (datetime-local).  
-**Submit:** `POST /api/tarefas` com `id_paciente = state.patient.id` e `created_by_user_name = state.currentUser.name`.  
+**Campos:** tipo_tarefa (select), descrição (textarea), prioridade (select), data prevista (datetime-local).
+**Submit:** `POST /api/tarefas` com `id_paciente = state.patient.id` e `created_by_user_name = state.currentUser.name`.
 **Pós-criação:** fecha modal + `loadTarefas()`.
 
 ### Modal "Concluir Tarefa"
 
-**Campos:** resultado (textarea), efetividade (select).  
-**Submit:** `PUT /api/tarefas/:id/concluir` com `completed_by_user_name = state.currentUser.name`.  
-**Mapeamento:** campo `resultado` do formulário → coluna `conduta_realizada` no banco.  
+**Campos:** resultado (textarea), efetividade (select).
+**Submit:** `PUT /api/tarefas/:id/concluir` com `completed_by_user_name = state.currentUser.name`.
+**Mapeamento:** campo `resultado` do formulário → coluna `conduta_realizada` no banco.
 **Pós-conclusão:** fecha modal + `loadTarefas()`.
 
 ### Regras de negócio
@@ -392,29 +458,16 @@ renderTarefas(tarefas) — tabela com cores por prioridade
 - Tarefas **nunca** são excluídas fisicamente do banco; usam `status = 'cancelada'` quando descartadas.
 - `updated_by_user_name` ausente em qualquer write → retorno `401`.
 - A ordenação é sempre por prioridade (crítica primeiro) e depois por `data_prevista ASC`.
-- O chip ativo destaca visualmente a seleção; os demais são estilo secundário.
 
 ---
 
-## 9. Painel Pendências do Paciente (Fase 7)
+## 12. Painel Pendências do Paciente (Fase 7)
 
 ### Conceito clínico
 
-**Pendência ≠ Tarefa.**  
-- **Tarefa:** ação operacional do enfermeiro (ligar, encaminhar, reavaliar).  
-- **Pendência:** problema ou situação clínica/administrativa ainda não resolvida do paciente (dor sem controle, perda ponderal, dificuldade de acesso à medicação, etc.).
-
-### Fluxo de carregamento
-
-```
-Usuário clica em "Pendências" no menu lateral
-    ↓
-activateModule('module-pendencias') → loadPendencias()
-    ↓
-GET /api/pendencias  (sem filtros — lista todas)
-    ↓
-renderPendencias(lista) — tabela com cores por prioridade e badges de status
-```
+**Pendência ≠ Tarefa.**
+- **Tarefa:** ação operacional do enfermeiro (ligar, encaminhar, reavaliar).
+- **Pendência:** problema ou situação clínica/administrativa ainda não resolvida do paciente.
 
 ### Chips de filtro
 
@@ -427,58 +480,20 @@ renderPendencias(lista) — tabela com cores por prioridade e badges de status
 | Críticas | `GET /api/pendencias?prioridade=critica` |
 | Select categoria | `GET /api/pendencias?categoria={valor}` |
 
-### Cores de status (frontend)
-
-| Status | Cor do texto | Fundo |
-|---|---|---|
-| `aberta` | `#92400e` | `#fef3c7` |
-| `em_acompanhamento` | `#1e40af` | `#dbeafe` |
-| `resolvida` | `#14532d` | `#dcfce7` |
-| `cancelada` | `#374151` | `#f1f5f9` |
-
-### Cores de prioridade
-
-Reutiliza as mesmas constantes de `PRIOR_COLOR` / `PRIOR_BG` das tarefas.
-
-### Modal "Nova Pendência"
-
-**Campos:** paciente (read-only), categoria (select obrigatório), descrição (textarea obrigatório), prioridade (select).  
-**Integração com consulta:** se `state.consultaId` estiver definido, o campo `id_consulta_origem` é preenchido automaticamente e exibido como info. Isso satisfaz a **Fase 7.3** — vínculo com a consulta atual sem alterar a tela SAE.  
-**Submit:** `POST /api/pendencias` com `id_paciente = state.patient.id` e `created_by_user_name = state.currentUser.name`.
-
-### Modal "Resolver Pendência"
-
-**Campos:** conduta realizada (textarea obrigatório).  
-**Submit:** `PUT /api/pendencias/:id/resolver` com `resolved_by_user_name = state.currentUser.name`.  
-**Efeitos no banco:** `status → 'resolvida'`, `resolved_at = NOW()`, `data_fechamento = NOW()` (legado), `conduta_atual` preenchida.  
-**Pós-resolução:** fecha modal + `loadPendencias()` — registro permanece visível na lista.
-
-### Integração com Indicadores
-
-`loadIndicators()` chama `GET /api/pendencias?status=aberta` e exibe a contagem no card "Pendências Abertas".
-
 ### Regras de negócio
 
 - Pendências **nunca** são excluídas fisicamente.
-- Pendências resolvidas continuam visíveis — filtro "Resolvidas" exibe o histórico completo.
 - Críticas sempre aparecem no topo (ordenação por prioridade).
 - `created_by_user_name` ausente no POST → retorno `401`.
 - `resolved_by_user_name` ausente no PUT → retorno `401`.
-- `updated_by_user_name` ausente no PATCH → retorno `401`.
 
 ---
 
-## 10. Painel do Enfermeiro (Fase 8)
+## 13. Painel do Enfermeiro (Fase 8)
 
 ### Propósito
 
-Visão operacional diária unificada. O enfermeiro abre o painel e vê, em uma única tela, todas as demandas do dia: tarefas planejadas, pendências críticas sem resolução e consultas registradas. Não substitui os módulos Agenda, Pendências ou Consultas — resume e direciona.
-
-### Modelo operacional
-
-O sistema opera com múltiplos enfermeiros (atualmente: Carla Alves e Danielle Cabral). O painel **não filtra por responsável por padrão** — exibe todos os dados da data selecionada. O filtro `responsavel` é opcional e, quando informado, restringe `tarefas_do_dia` à pessoa especificada. Pendências e consultas sempre aparecem independentemente do responsável.
-
-> **Decisão de design:** sem bloqueio por responsável nesta fase. O painel é compartilhado — qualquer enfermeira logada vê a operação completa do dia.
+Visão operacional diária unificada. Não substitui os módulos Agenda, Pendências ou Consultas — resume e direciona.
 
 ### Fluxo de carregamento
 
@@ -504,42 +519,10 @@ renderPainel(d) — atualiza cards, tabelas e alertas
     "pendencias_criticas": 1,
     "pacientes_alto_risco": 1
   },
-  "tarefas_do_dia": [
-    {
-      "id_tarefa": 23,
-      "tipo_tarefa": "reavaliacao_toxicidade",
-      "descricao": "Reavaliar toxicidade hematologica",
-      "prioridade": "alta",
-      "status": "pendente",
-      "data_prevista": "2026-05-17T10:00:00Z",
-      "responsavel": null,
-      "created_by_user_name": "Enf. Carla",
-      "iniciais_nome": "A.C.P",
-      "registro_instituicao": "7654321"
-    }
-  ],
-  "pendencias_criticas": [
-    {
-      "id_pendencia": 4,
-      "categoria": "clinica",
-      "descricao": "Toxicidade grau 3 persistente — vomitos incoerciveis",
-      "prioridade": "critica",
-      "status": "aberta",
-      "created_by_user_name": "Enf. Carla",
-      "iniciais_nome": "A.C.P"
-    }
-  ],
-  "pendencias_abertas": [ "... todas com status aberta ou em_acompanhamento ..." ],
-  "consultas_do_dia": [
-    {
-      "id_consulta": 22,
-      "tipo_consulta": "retorno",
-      "status_consulta": "concluida",
-      "data_hora": "2026-05-17T09:00:00Z",
-      "classificacao_risco_validada": "moderado",
-      "iniciais_nome": "A.C.P"
-    }
-  ],
+  "tarefas_do_dia": [...],
+  "pendencias_criticas": [...],
+  "pendencias_abertas": [...],
+  "consultas_do_dia": [...],
   "alertas": [
     { "nivel": "critico", "mensagem": "1 pendência(s) crítica(s) em aberto." },
     { "nivel": "alto",    "mensagem": "1 tarefa(s) com prazo vencido." }
@@ -547,49 +530,16 @@ renderPainel(d) — atualiza cards, tabelas e alertas
 }
 ```
 
-### Cálculo dos cards de resumo
-
-| Card | Campo | Cálculo |
-|---|---|---|
-| Tarefas Pendentes | `tarefas_pendentes` | `tarefas_do_dia` com `status IN ('pendente', 'em_andamento')` |
-| Concluídas Hoje | `tarefas_concluidas` | `tarefas_do_dia` com `status = 'concluida'` |
-| Pendências Abertas | `pendencias_abertas` | Contagem de `pendencias_abertas` (todos com status aberta/em_acompanhamento) |
-| Pendências Críticas | `pendencias_criticas` | Contagem de `pendencias_criticas` (prioridade=crítica, não resolvidas) |
-| Pacientes Alto Risco | `pacientes_alto_risco` | `COUNT(DISTINCT id_paciente)` com risco alto/crítico nos últimos 30 dias |
-
-> **Observação:** `tarefas_do_dia` e `consultas_do_dia` são filtradas pela data selecionada (`data_prevista::date` e `data_hora::date`). `pendencias_abertas` e `pendencias_criticas` são **sempre globais** — não filtradas por data, pois representam situações em curso independentemente do dia.
-
 ### Regras de alertas automáticos
-
-Alertas são gerados dinamicamente no backend a partir dos dados retornados:
 
 | Condição | Nível | Mensagem |
 |---|---|---|
 | `pendencias_criticas.length > 0` | `critico` | `N pendência(s) crítica(s) em aberto.` |
 | Tarefas do dia com `status pendente/em_andamento` e `data_prevista < agora` | `alto` | `N tarefa(s) com prazo vencido.` |
 
-Alertas são exibidos em banda colorida no topo do painel (vermelho escuro = crítico, âmbar = alto). Desaparecem quando não há condição ativa.
-
-### Autenticação
-
-- `user` ausente no query param → `401 Usuário não autenticado.`
-- Não há JWT; o `user` é o `state.currentUser.name` propagado pelo frontend.
-- Nenhum dado é filtrado por `user` exceto quando `responsavel` é explicitamente passado.
-
-### Botões de navegação
-
-| Botão | Ação |
-|---|---|
-| "Ver Agenda" | `activateModule('module-tasks')` |
-| "Ver Pendências" | `activateModule('module-pendencias')` |
-
-### Filtro de data (frontend)
-
-Input `type="date"` com valor padrão = data atual (ISO). Ao clicar "Atualizar", chama `loadPainel(data)` com a nova data. Arrays vazios retornam mensagem amigável sem quebrar a tela.
-
 ---
 
-## 11. Referência de Payloads dos Endpoints
+## 14. Referência de Payloads dos Endpoints
 
 > **Atenção:** todos os writes exigem o campo de auditoria correspondente (`created_by_user_name`, `updated_by_user_name` ou `completed_by_user_name`). Ausência retorna `401`.
 
@@ -602,24 +552,12 @@ Input `type="date"` com valor padrão = data atual (ISO). Ao clicar "Atualizar",
       "grau_ctcae": 2,
       "alerta_risco": false,
       "observacao": "náusea pós quimioterapia"
-    },
-    {
-      "tipo_sintoma": "vomito",
-      "grau_ctcae": 2,
-      "alerta_risco": false,
-      "observacao": null
     }
   ],
   "classificacao_risco_automatica": "moderado",
   "updated_by_user_name": "Carla Alves"
 }
 ```
-> Campos `alerta_risco` e `observacao` são opcionais (default: `false` e `null`).  
-> O campo se chama `tipo_sintoma`, não `codigo_ctcae`. O grau é `grau_ctcae`, não `grau`.
-
-**Resposta:** `{ "ok": true, "registros": 2 }`
-
----
 
 ### `POST /api/consultas/:id/concluir`
 ```json
@@ -632,28 +570,21 @@ Input `type="date"` com valor padrão = data atual (ISO). Ao clicar "Atualizar",
   "data_prevista_tarefa": "2026-05-24",
   "prioridade_tarefa": "alta",
   "responsavel": "Carla Alves",
-  "completed_by_user_name": "Carla Alves"
+  "completed_by_user_name": "Carla Alves",
+  "anamnese": { "cv_pa": "120/80", "cv_fc": "78", "comorbidades": ["HAS", "DM"] }
 }
 ```
-> `classificacao_risco_validada` representa a decisão clínica final do enfermeiro (pode diferir da automática).  
-> `tipo_tarefa`, `data_prevista_tarefa` e `prioridade_tarefa` são opcionais — geram tarefa só se presentes.
+> `anamnese` é opcional — enviado apenas em consultas de início/troca de protocolo.
 
----
-
-### `POST /api/consultas/:id/orientacoes`
+### `PATCH /api/pacientes/:id/inativar`
 ```json
 {
-  "orientacoes": [
-    { "codigo_nic": 1450, "tipo": "paciente", "texto": "Faça refeições pequenas e frequentes..." },
-    { "codigo_nic": 1450, "tipo": "cuidador", "texto": "Ofereça alimentos de fácil digestão..." }
-  ],
-  "updated_by_user_name": "Carla Alves"
+  "motivo_inativacao": "obito",
+  "inativado_by_user_name": "Carla Alves"
 }
 ```
-> `tipo` aceita somente `"paciente"` ou `"cuidador"`.  
-> Apaga e reinserere todas as orientações da consulta (DELETE + INSERT em transação).
-
----
+> `motivo_inativacao` obrigatório. Aceita apenas: `teste` | `obito`.
+> Salva automaticamente: `status_paciente = 'inativo'`, `data_inativacao = NOW()`.
 
 ### `POST /api/tarefas`
 ```json
@@ -667,23 +598,15 @@ Input `type="date"` com valor padrão = data atual (ISO). Ao clicar "Atualizar",
   "created_by_user_name": "Carla Alves"
 }
 ```
-> `tipo_tarefa` aceita: `retorno`, `avaliacao_urgente`, `ligacao`, `contato_telefonico`, `reavaliacao_toxicidade`, `encaminhamento`.  
-> `prioridade` aceita: `critica`, `alta`, `moderada`, `baixa`, `padrao`.
-
----
 
 ### `PUT /api/tarefas/:id/concluir`
 ```json
 {
-  "resultado": "Paciente sem novas queixas, toxicidade controlada",
+  "resultado": "Paciente sem novas queixas",
   "efetividade": "resolvido",
   "completed_by_user_name": "Carla Alves"
 }
 ```
-> `resultado` → coluna `conduta_realizada` no banco (mapeamento interno).  
-> `efetividade` aceita: `resolvido`, `melhora_parcial`, `sem_melhora`, `piora`, `encaminhado`.
-
----
 
 ### `POST /api/pendencias`
 ```json
@@ -696,10 +619,6 @@ Input `type="date"` com valor padrão = data atual (ISO). Ao clicar "Atualizar",
   "created_by_user_name": "Carla Alves"
 }
 ```
-> `categoria` aceita: `clinica`, `medicamentosa`, `social`, `administrativa`, `laboratorial`, `psicologica`, `nutricional`, `adesao`, `acesso_rede`.  
-> `id_consulta_origem` é opcional — preencher quando a pendência surgiu de uma consulta específica.
-
----
 
 ### `PUT /api/pendencias/:id/resolver`
 ```json
@@ -708,16 +627,20 @@ Input `type="date"` com valor padrão = data atual (ISO). Ao clicar "Atualizar",
   "resolved_by_user_name": "Carla Alves"
 }
 ```
-> Efeitos no banco: `status → 'resolvida'`, `resolved_at = NOW()`, `data_fechamento = NOW()`, `conduta_atual = conduta`.
 
 ---
 
-## 12. Deploy
+## 15. Deploy
 
 | Componente | Trigger | Destino |
 |---|---|---|
 | Backend | Push para `main` em `oncoguia-api` | Railway (auto-deploy via webhook GitHub) |
-| Frontend | Push para `gh-pages` em `oncoguia-pwa` | GitHub Actions → Pages (workflow `deploy.yml`) |
+| Frontend | Push para `gh-pages` em `oncoguia-pwa` | GitHub Pages — **Deploy from branch: `gh-pages` / root** |
 
-**Configuração obrigatória no GitHub Pages:**  
-Environment `github-pages` → Deployment branches → **No restriction** (necessário para deploy do branch `gh-pages`)
+**Configuração GitHub Pages (v1.4.0):**
+- Source: **Deploy from a branch**
+- Branch: `gh-pages`, pasta: `/ (root)`
+- Arquivos estáticos servidos diretamente do branch, sem build step.
+- Workflow `.github/workflows/deploy.yml` mantido como fallback, mas **não é o mecanismo ativo de deploy**.
+
+> **Nota de infraestrutura:** até a v1.3.0, o deploy usava `GitHub Actions → actions/deploy-pages`. Esse mecanismo gerou falhas intermitentes de environment protection. A partir da v1.4.0, o deploy é feito diretamente pelo GitHub Pages via branch, eliminando a dependência do workflow Actions para o frontend.
