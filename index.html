@@ -377,6 +377,14 @@
                                 <label>Telefone do Cuidador</label>
                                 <input type="tel" id="pac-tel-cuidador" placeholder="(11) 99999-9999">
                             </div>
+                            <div class="field-group full">
+                                <label>Alergia</label>
+                                <div style="display:flex;align-items:center;gap:16px;margin-bottom:6px">
+                                    <label class="rc-item" style="margin:0"><input type="radio" name="pac-alergia" value="nao"> Não</label>
+                                    <label class="rc-item" style="margin:0"><input type="radio" name="pac-alergia" value="sim"> Sim</label>
+                                </div>
+                                <input type="text" id="pac-alergia-desc" placeholder="Especifique a alergia..." style="display:none">
+                            </div>
                         </div>
                     </div>
                     <div class="card">
@@ -388,6 +396,19 @@
                             <div class="field-group full">
                                 <label>Diagnóstico Oncológico</label>
                                 <input type="text" id="pac-dx" placeholder="Ex: Adenocarcinoma de cólon">
+                            </div>
+                            <div class="field-group">
+                                <label>Data do Diagnóstico</label>
+                                <input type="date" id="pac-data-diagnostico">
+                            </div>
+                            <div class="field-group">
+                                <label>Tipo de Tratamento</label>
+                                <select id="pac-tipo-tratamento" class="select-field">
+                                    <option value="">Selecione...</option>
+                                    <option value="Adjuvante">Adjuvante</option>
+                                    <option value="Neoadjuvante">Neoadjuvante</option>
+                                    <option value="Paliativo">Paliativo</option>
+                                </select>
                             </div>
                             <div class="field-group">
                                 <label>Protocolo Atual</label>
@@ -404,6 +425,14 @@
                             <div class="field-group">
                                 <label>Data Prevista Próxima QT</label>
                                 <input type="date" id="pac-proxima-qt">
+                            </div>
+                            <div class="field-group full">
+                                <label>Faz Radioterapia?</label>
+                                <div style="display:flex;align-items:center;gap:16px;margin-bottom:6px">
+                                    <label class="rc-item" style="margin:0"><input type="radio" name="pac-radioterapia" value="nao"> Não</label>
+                                    <label class="rc-item" style="margin:0"><input type="radio" name="pac-radioterapia" value="sim"> Sim</label>
+                                </div>
+                                <input type="text" id="pac-local-radioterapia" placeholder="Onde faz a radioterapia..." style="display:none">
                             </div>
                         </div>
                         <div class="card-action-row">
@@ -485,6 +514,394 @@
                             <label class="ecog-btn risk-ecog"><input type="radio" name="ecog" value="4"><span>4</span><small>Totalmente acamado</small></label>
                         </div>
                     </div>
+                </div>
+
+                <!-- ══════════════════════════════════════════════════════════════
+                     ANAMNESE ESTENDIDA — INÍCIO DE TRATAMENTO / TROCA DE PROTOCOLO
+                ══════════════════════════════════════════════════════════════ -->
+                <div id="form-inicio-tratamento" style="display:none">
+
+                    <div class="section-label mt-16" style="font-size:0.8rem;letter-spacing:.06em;color:#175C9D;border-bottom:2px solid #dbeafe;padding-bottom:6px;margin-bottom:0">
+                        ANAMNESE — CONSULTA DE ABERTURA DE TRATAMENTO
+                    </div>
+
+                    <!-- A: Dados Pessoais | História Pregressa + Familiar -->
+                    <div class="module-grid-2 mt-16">
+
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></span>
+                                <h2 class="card-title">1. Dados Pessoais</h2>
+                            </div>
+                            <div class="form-grid-2">
+                                <div class="field-group">
+                                    <label>Escolaridade</label>
+                                    <select id="fit-escolaridade" class="select-field">
+                                        <option value="">Selecione...</option>
+                                        <option>Sem escolaridade</option>
+                                        <option>Fundamental incompleto</option>
+                                        <option>Fundamental completo</option>
+                                        <option>Médio incompleto</option>
+                                        <option>Médio completo</option>
+                                        <option>Superior incompleto</option>
+                                        <option>Superior completo</option>
+                                        <option>Pós-graduação</option>
+                                    </select>
+                                </div>
+                                <div class="field-group">
+                                    <label>Profissão</label>
+                                    <input type="text" id="fit-profissao" placeholder="Profissão de formação">
+                                </div>
+                                <div class="field-group full">
+                                    <label>Ocupação Atual</label>
+                                    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px">
+                                        <label class="rc-item"><input type="radio" name="fit_ocupacao" value="inativo"> Inativo</label>
+                                        <label class="rc-item"><input type="radio" name="fit_ocupacao" value="aposentado"> Aposentado(a)</label>
+                                        <label class="rc-item"><input type="radio" name="fit_ocupacao" value="licenca_inss"> Licença INSS</label>
+                                        <label class="rc-item"><input type="radio" name="fit_ocupacao" value="ativo"> Ativo(a)</label>
+                                    </div>
+                                </div>
+                                <div class="field-group full">
+                                    <label>Estado Civil</label>
+                                    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px">
+                                        <label class="rc-item"><input type="radio" name="fit_estado_civil" value="casado"> Casado(a)</label>
+                                        <label class="rc-item"><input type="radio" name="fit_estado_civil" value="solteiro"> Solteiro(a)</label>
+                                        <label class="rc-item"><input type="radio" name="fit_estado_civil" value="amasiado"> Amasiado(a)</label>
+                                        <label class="rc-item"><input type="radio" name="fit_estado_civil" value="viuvo"> Viúvo(a)</label>
+                                        <label class="rc-item"><input type="radio" name="fit_estado_civil" value="divorciado"> Divorciado(a)</label>
+                                    </div>
+                                </div>
+                                <div class="field-group">
+                                    <label>Filhos</label>
+                                    <div style="display:flex;gap:16px;margin-top:5px">
+                                        <label class="rc-item"><input type="radio" name="fit_filhos" value="nao"> Não</label>
+                                        <label class="rc-item"><input type="radio" name="fit_filhos" value="sim"> Sim</label>
+                                    </div>
+                                </div>
+                                <div class="field-group" id="fit-filhos-qtd-group" style="display:none">
+                                    <label>Quantos filhos?</label>
+                                    <input type="number" id="fit-filhos-qtd" min="1" max="20" placeholder="Ex: 2">
+                                </div>
+                                <div class="field-group">
+                                    <label>Naturalidade</label>
+                                    <input type="text" id="fit-naturalidade" placeholder="Cidade / UF de nascimento">
+                                </div>
+                                <div class="field-group">
+                                    <label>Cidade de Residência</label>
+                                    <input type="text" id="fit-cidade-residencia" placeholder="Cidade / UF atual">
+                                </div>
+                                <div class="field-group full">
+                                    <label>Religião ou Crença</label>
+                                    <input type="text" id="fit-religiao" placeholder="Ex: Católica, Evangélica, Espírita...">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex;flex-direction:column;gap:16px">
+
+                            <div class="card">
+                                <div class="card-header">
+                                    <span class="card-icon amber"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+                                    <h2 class="card-title">2. História da Saúde Pregressa</h2>
+                                </div>
+                                <div class="section-label">Comorbidade</div>
+                                <div style="display:flex;gap:16px;margin:5px 0">
+                                    <label class="rc-item"><input type="radio" name="fit_comorbidade_pre" value="nao"> Não</label>
+                                    <label class="rc-item"><input type="radio" name="fit_comorbidade_pre" value="sim"> Sim</label>
+                                </div>
+                                <input type="text" id="fit-comorbidade-desc" class="input-sm" placeholder="Descreva a(s) comorbidade(s)" style="width:100%;box-sizing:border-box;display:none">
+                                <div class="section-label mt-16">Cirurgia Prévia</div>
+                                <div style="display:flex;gap:16px;margin:5px 0">
+                                    <label class="rc-item"><input type="radio" name="fit_cirurgia_prev" value="nao"> Não</label>
+                                    <label class="rc-item"><input type="radio" name="fit_cirurgia_prev" value="sim"> Sim</label>
+                                </div>
+                                <input type="text" id="fit-cirurgia-desc" class="input-sm" placeholder="Qual cirurgia? Quando?" style="width:100%;box-sizing:border-box;display:none">
+                            </div>
+
+                            <div class="card">
+                                <div class="card-header">
+                                    <span class="card-icon amber"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></span>
+                                    <h2 class="card-title">3. História Familiar — Neoplasia</h2>
+                                </div>
+                                <div style="display:flex;gap:16px;margin:5px 0 8px">
+                                    <label class="rc-item"><input type="radio" name="fit_hist_familiar" value="nao"> Não</label>
+                                    <label class="rc-item"><input type="radio" name="fit_hist_familiar" value="sim"> Sim</label>
+                                </div>
+                                <input type="text" id="fit-hist-familiar-desc" class="input-sm" placeholder="Qual neoplasia? Grau de parentesco?" style="width:100%;box-sizing:border-box;display:none">
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- B: Hábitos de Vida | Condição de Saúde -->
+                    <div class="module-grid-2 mt-16">
+
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+                                <h2 class="card-title">4. Hábitos de Vida</h2>
+                            </div>
+                            <div class="risk-factors-grid">
+                                <div class="rf-item"><span>Padrão do Sono</span><div class="rf-options"><label><input type="radio" name="fit_sono" value="preservado"> Preservado</label><label><input type="radio" name="fit_sono" value="alterado"> Alterado</label></div></div>
+                                <div class="rf-item"><span>Atividade Física</span><div class="rf-options"><label><input type="radio" name="fit_atividade_fisica" value="sedentario"> Sedentário</label><label><input type="radio" name="fit_atividade_fisica" value="ativo"> Ativo</label></div></div>
+                                <div class="rf-item"><span>Etilismo</span><div class="rf-options"><label><input type="radio" name="fit_etilismo" value="nao"> Não</label><label><input type="radio" name="fit_etilismo" value="sim"> Sim</label></div></div>
+                                <div class="rf-item"><span>Tabagismo</span><div class="rf-options"><label><input type="radio" name="fit_tabagismo" value="nao"> Não</label><label><input type="radio" name="fit_tabagismo" value="sim"> Sim</label></div></div>
+                                <div class="rf-item"><span>Vida Sexual Ativa</span><div class="rf-options"><label><input type="radio" name="fit_vida_sexual" value="nao"> Não</label><label><input type="radio" name="fit_vida_sexual" value="sim"> Sim</label></div></div>
+                            </div>
+                            <div class="form-grid-2 mt-16">
+                                <div class="field-group">
+                                    <label>Data Última Menstruação <small>(feminino)</small></label>
+                                    <input type="date" id="fit-dum">
+                                </div>
+                                <div class="field-group">
+                                    <label>Amenorreia <small>(feminino)</small></label>
+                                    <div style="display:flex;gap:16px;margin-top:6px">
+                                        <label class="rc-item"><input type="radio" name="fit_amenorreia" value="nao"> Não</label>
+                                        <label class="rc-item"><input type="radio" name="fit_amenorreia" value="sim"> Sim</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span>
+                                <h2 class="card-title">5. Condição de Saúde</h2>
+                            </div>
+                            <div class="risk-factors-grid">
+                                <div class="rf-item"><span>Segurança Emocional</span><div class="rf-options"><label><input type="radio" name="fit_seg_emocional" value="preservada"> Preservada</label><label><input type="radio" name="fit_seg_emocional" value="comprometida_leve"> Leve</label><label><input type="radio" name="fit_seg_emocional" value="comprometida_moderada"> Moderada</label><label><input type="radio" name="fit_seg_emocional" value="comprometida_grave"> Grave</label></div></div>
+                                <div class="rf-item"><span>Estado Neurológico</span><div class="rf-options"><label><input type="radio" name="fit_neurologico" value="preservado"> Preservado</label><label><input type="radio" name="fit_neurologico" value="confuso"> Confuso</label><label><input type="radio" name="fit_neurologico" value="somnolento"> Sonolento</label><label><input type="radio" name="fit_neurologico" value="agitado"> Agitado</label></div></div>
+                                <div class="rf-item"><span>Acuidade Visual</span><div class="rf-options"><label><input type="radio" name="fit_acuidade_visual" value="preservada"> Preservada</label><label><input type="radio" name="fit_acuidade_visual" value="diminuida"> Diminuída</label></div></div>
+                                <div class="rf-item"><span>Acuidade Auditiva</span><div class="rf-options"><label><input type="radio" name="fit_acuidade_auditiva" value="preservada"> Preservada</label><label><input type="radio" name="fit_acuidade_auditiva" value="diminuida"> Diminuída</label></div></div>
+                                <div class="rf-item"><span>Risco de Queda</span><div class="rf-options"><label><input type="radio" name="fit_risco_queda" value="baixo"> Baixo</label><label><input type="radio" name="fit_risco_queda" value="medio"> Médio</label><label><input type="radio" name="fit_risco_queda" value="alto"> Alto</label></div></div>
+                            </div>
+                            <div class="field-group mt-16">
+                                <label>Escala de Morse (pontos)</label>
+                                <input type="number" id="fit-morse" min="0" max="125" placeholder="0 – 125">
+                            </div>
+                            <div class="section-label mt-16">Dor</div>
+                            <div style="display:flex;gap:16px;margin:5px 0">
+                                <label class="rc-item"><input type="radio" name="fit_dor" value="nao"> Não</label>
+                                <label class="rc-item"><input type="radio" name="fit_dor" value="sim"> Sim</label>
+                            </div>
+                            <div id="fit-dor-detail" style="display:none" class="form-grid-2">
+                                <div class="field-group"><label>Local da Dor</label><input type="text" id="fit-dor-local" placeholder="Localização"></div>
+                                <div class="field-group"><label>Intensidade — EVA (0–10)</label><input type="number" id="fit-dor-eva" min="0" max="10" placeholder="0 – 10"></div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- C: História da Doença Atual -->
+                    <div class="card mt-16">
+                        <div class="card-header">
+                            <span class="card-icon red"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg></span>
+                            <h2 class="card-title">6. História da Doença Atual</h2>
+                        </div>
+                        <div class="form-grid-2">
+                            <div class="field-group">
+                                <label>Diagnóstico Histológico</label>
+                                <input type="text" id="fit-dx-histologico" placeholder="Ex: Adenocarcinoma de mama">
+                            </div>
+                            <div class="field-group">
+                                <label>Data do Diagnóstico</label>
+                                <input type="date" id="fit-dx-data">
+                            </div>
+                            <div class="field-group full">
+                                <label>Estadiamento Completo</label>
+                                <div style="display:flex;gap:16px;margin:5px 0">
+                                    <label class="rc-item"><input type="radio" name="fit_estadiamento" value="nao"> Não informado</label>
+                                    <label class="rc-item"><input type="radio" name="fit_estadiamento" value="sim"> Informado</label>
+                                </div>
+                                <input type="text" id="fit-estadiamento-desc" class="input-sm" placeholder="Ex: T2 N1 M0 — Estádio IIA" style="width:100%;box-sizing:border-box;display:none">
+                            </div>
+                            <div class="field-group">
+                                <label>Metástase</label>
+                                <div style="display:flex;gap:16px;margin-top:5px">
+                                    <label class="rc-item"><input type="radio" name="fit_metastase" value="nao"> Não</label>
+                                    <label class="rc-item"><input type="radio" name="fit_metastase" value="sim"> Sim</label>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <label>Protocolo Proposto</label>
+                                <input type="text" id="fit-protocolo-proposto" placeholder="Ex: AC-T, FOLFOX, Carboplatina/Paclitaxel">
+                            </div>
+                            <div class="field-group full">
+                                <label>Finalidade da Quimioterapia</label>
+                                <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px">
+                                    <label class="rc-item"><input type="radio" name="fit_finalidade_qt" value="curativa"> Curativa</label>
+                                    <label class="rc-item"><input type="radio" name="fit_finalidade_qt" value="adjuvante"> Adjuvante</label>
+                                    <label class="rc-item"><input type="radio" name="fit_finalidade_qt" value="neoadjuvante"> Neoadjuvante</label>
+                                    <label class="rc-item"><input type="radio" name="fit_finalidade_qt" value="paliativa"> Paliativa</label>
+                                </div>
+                            </div>
+                            <div class="field-group full">
+                                <label>Tratamento Anterior</label>
+                                <div class="checkbox-list" style="flex-direction:row;flex-wrap:wrap;gap:12px;margin-top:4px">
+                                    <label class="cb-item"><input type="checkbox" name="fit_tto_anterior" value="rxt"> Radioterapia (RxT)</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_tto_anterior" value="qt"> Quimioterapia (QT)</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_tto_anterior" value="cirurgia"> Cirurgia</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_tto_anterior" value="nenhum"> Nenhum</label>
+                                </div>
+                            </div>
+                            <div class="field-group full">
+                                <label>Conhecimento sobre a Doença</label>
+                                <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px">
+                                    <label class="rc-item"><input type="radio" name="fit_conhecimento_doenca" value="total"> Conhece totalmente</label>
+                                    <label class="rc-item"><input type="radio" name="fit_conhecimento_doenca" value="parcial"> Conhece parcialmente</label>
+                                    <label class="rc-item"><input type="radio" name="fit_conhecimento_doenca" value="minimo"> Conhecimento mínimo</label>
+                                    <label class="rc-item"><input type="radio" name="fit_conhecimento_doenca" value="nenhum"> Não sabe</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- D: Exame Físico Completo -->
+                    <div class="card mt-16">
+                        <div class="card-header">
+                            <span class="card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+                            <h2 class="card-title">7. Exame Físico Completo</h2>
+                        </div>
+                        <div class="form-grid-2">
+                            <div class="field-group full">
+                                <div class="section-label">Estado Geral</div>
+                                <div class="checkbox-list" style="flex-direction:row;flex-wrap:wrap;gap:10px;margin-top:6px">
+                                    <label class="cb-item"><input type="checkbox" name="fit_geral" value="corado"> Corado</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_geral" value="hipocorado"> Hipocorado</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_geral" value="hidratado"> Hidratado</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_geral" value="desidratado"> Desidratado</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_geral" value="eupneico"> Eupneico</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_geral" value="dispneico"> Dispneico</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_geral" value="lucido"> Lúcido</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_geral" value="orientado"> Orientado</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_geral" value="desorientado"> Desorientado</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_geral" value="febril"> Febril</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_geral" value="afebril"> Afebril</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_geral" value="normopeso"> Normopeso</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_geral" value="sobrepeso"> Sobrepeso</label>
+                                    <label class="cb-item"><input type="checkbox" name="fit_geral" value="desnutrido"> Desnutrido</label>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <div class="section-label">Edema</div>
+                                <div style="display:flex;gap:16px;margin-top:6px">
+                                    <label class="rc-item"><input type="radio" name="fit_edema" value="nao"> Não</label>
+                                    <label class="rc-item"><input type="radio" name="fit_edema" value="sim"> Sim</label>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <div class="section-label">Mucosa Oral</div>
+                                <select id="fit-mucosa-oral" class="select-field" style="margin-top:6px">
+                                    <option value="">Selecione...</option>
+                                    <option>Íntegra e úmida</option>
+                                    <option>Hiperemia</option>
+                                    <option>Mucosite G1</option>
+                                    <option>Mucosite G2</option>
+                                    <option>Mucosite G3-4</option>
+                                    <option>Candidíase</option>
+                                    <option>Xerostomia</option>
+                                </select>
+                            </div>
+                            <div class="field-group full">
+                                <div class="section-label">Oxigenação</div>
+                                <div style="display:flex;flex-wrap:wrap;gap:10px;margin:5px 0">
+                                    <label class="rc-item"><input type="radio" name="fit_oxigenacao" value="ar_ambiente"> Ar ambiente</label>
+                                    <label class="rc-item"><input type="radio" name="fit_oxigenacao" value="o2_suplementar"> O2 suplementar</label>
+                                </div>
+                                <div class="form-grid-2">
+                                    <div class="field-group"><label>Dispositivo</label><input type="text" id="fit-ox-dispositivo" placeholder="Ex: cateter nasal, máscara"></div>
+                                    <div class="field-group"><label>FR (irpm)</label><input type="number" id="fit-ox-fr" placeholder="Ex: 18"></div>
+                                    <div class="field-group"><label>SpO2 (%)</label><input type="number" id="fit-ox-spo2" placeholder="Ex: 98"></div>
+                                    <div class="field-group"><label>O2 (L/min)</label><input type="number" id="fit-ox-o2" placeholder="Ex: 2" step="0.5"></div>
+                                </div>
+                            </div>
+                            <div class="field-group full">
+                                <div class="section-label">Cardiovascular</div>
+                                <div style="display:flex;flex-wrap:wrap;gap:10px;margin:5px 0">
+                                    <label class="rc-item"><input type="radio" name="fit_cardiovascular" value="ritmo_sinusal"> Ritmo sinusal</label>
+                                    <label class="rc-item"><input type="radio" name="fit_cardiovascular" value="arritmia"> Arritmia</label>
+                                    <label class="rc-item"><input type="radio" name="fit_cardiovascular" value="bradicardia"> Bradicardia</label>
+                                    <label class="rc-item"><input type="radio" name="fit_cardiovascular" value="taquicardia"> Taquicardia</label>
+                                </div>
+                                <div class="form-grid-2">
+                                    <div class="field-group"><label>FC (bpm)</label><input type="number" id="fit-cv-fc" placeholder="Ex: 80"></div>
+                                    <div class="field-group"><label>PA (mmHg)</label><input type="text" id="fit-cv-pa" placeholder="Ex: 120/80"></div>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <div class="section-label">Abdome</div>
+                                <select id="fit-abdome" class="select-field" style="margin-top:6px">
+                                    <option value="">Selecione...</option>
+                                    <option>Normotenso, indolor</option>
+                                    <option>Distendido</option>
+                                    <option>Doloroso à palpação</option>
+                                    <option>RHA presentes</option>
+                                    <option>RHA diminuídos</option>
+                                    <option>RHA ausentes</option>
+                                </select>
+                            </div>
+                            <div class="field-group full">
+                                <div class="section-label">Nutrição</div>
+                                <div style="display:flex;flex-wrap:wrap;gap:10px;margin:5px 0">
+                                    <label class="rc-item"><input type="radio" name="fit_nutricao_ef" value="vo_satisfatoria"> VO satisfatória</label>
+                                    <label class="rc-item"><input type="radio" name="fit_nutricao_ef" value="vo_insatisfatoria"> VO insatisfatória</label>
+                                    <label class="rc-item"><input type="radio" name="fit_nutricao_ef" value="jejum"> Jejum</label>
+                                    <label class="rc-item"><input type="radio" name="fit_nutricao_ef" value="enteral"> Dieta enteral</label>
+                                    <label class="rc-item"><input type="radio" name="fit_nutricao_ef" value="parenteral"> Parenteral</label>
+                                </div>
+                                <div class="form-grid-2">
+                                    <div class="field-group"><label>Dispositivo nutricional</label><input type="text" id="fit-nut-dispositivo" placeholder="Ex: SNE, gastrostomia"></div>
+                                    <div class="field-group"><label>Hidratação oral</label><input type="text" id="fit-nut-hidratacao" placeholder="Ex: 1500 mL/dia"></div>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <div class="section-label">Eliminação Urinária</div>
+                                <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px">
+                                    <label class="rc-item"><input type="radio" name="fit_elin_urinaria" value="espontanea"> Espontânea</label>
+                                    <label class="rc-item"><input type="radio" name="fit_elin_urinaria" value="cateter_vesical"> Cateter vesical</label>
+                                    <label class="rc-item"><input type="radio" name="fit_elin_urinaria" value="nefrostomia"> Nefrostomia</label>
+                                    <label class="rc-item"><input type="radio" name="fit_elin_urinaria" value="urostomia"> Urostomia</label>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <div class="section-label">Eliminação Intestinal</div>
+                                <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px">
+                                    <label class="rc-item"><input type="radio" name="fit_elin_intestinal" value="preservada"> Preservada</label>
+                                    <label class="rc-item"><input type="radio" name="fit_elin_intestinal" value="obstipacao"> Obstipação</label>
+                                    <label class="rc-item"><input type="radio" name="fit_elin_intestinal" value="diarreia"> Diarreia</label>
+                                    <label class="rc-item"><input type="radio" name="fit_elin_intestinal" value="ostomia"> Ostomia</label>
+                                </div>
+                            </div>
+                            <div class="field-group full">
+                                <div class="section-label">Integridade Cutâneo-mucosa</div>
+                                <div style="display:flex;gap:16px;margin:5px 0">
+                                    <label class="rc-item"><input type="radio" name="fit_integridade_cutanea" value="integra"> Íntegra</label>
+                                    <label class="rc-item"><input type="radio" name="fit_integridade_cutanea" value="lesao"> Lesão presente</label>
+                                </div>
+                                <input type="text" id="fit-integridade-desc" class="input-sm" placeholder="Descreva a lesão (local, tipo, extensão)" style="width:100%;box-sizing:border-box;display:none">
+                            </div>
+                            <div class="field-group">
+                                <div class="section-label">Esvaziamento Axilar</div>
+                                <div style="display:flex;gap:16px;margin:5px 0">
+                                    <label class="rc-item"><input type="radio" name="fit_esvaziamento_axilar" value="nao"> Não</label>
+                                    <label class="rc-item"><input type="radio" name="fit_esvaziamento_axilar" value="sim"> Sim</label>
+                                </div>
+                                <div id="fit-esvaziamento-membro-group" style="display:none">
+                                    <label style="font-size:0.75rem;font-weight:600;color:#374151;display:block;margin-top:6px">Membro</label>
+                                    <div style="display:flex;gap:12px;margin-top:4px">
+                                        <label class="rc-item"><input type="radio" name="fit_esvaziamento_membro" value="direito"> Direito</label>
+                                        <label class="rc-item"><input type="radio" name="fit_esvaziamento_membro" value="esquerdo"> Esquerdo</label>
+                                        <label class="rc-item"><input type="radio" name="fit_esvaziamento_membro" value="bilateral"> Bilateral</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="field-group full">
+                                <div class="section-label">Dados Relevantes de Enfermagem</div>
+                                <textarea id="fit-dados-relevantes" rows="3" class="textarea-field" placeholder="Registre achados de enfermagem relevantes não contemplados acima..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Linha 2: Comorbidades + Medicamentos + Suporte Social -->
@@ -830,7 +1247,35 @@
             <!-- ── MÓDULO 4: SEGUIMENTO ── -->
             <section id="module-followup" class="module">
 
-                <!-- Contexto da última Consulta de Enfermagem -->
+                <!-- Card de vínculo com consulta -->
+                <div class="card mb-16">
+                    <div class="card-header">
+                        <span class="card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
+                        <h2 class="card-title">Vínculo com Consulta de Enfermagem</h2>
+                    </div>
+                    <div style="padding:4px 0 8px">
+                        <label style="font-size:0.78rem;font-weight:600;display:block;margin-bottom:8px">Este seguimento está atrelado a uma Consulta de Enfermagem?</label>
+                        <div style="display:flex;gap:20px;margin-bottom:12px">
+                            <label class="rc-item"><input type="radio" name="seg-atrelado" value="sim" id="seg-atrelado-sim"> Sim</label>
+                            <label class="rc-item"><input type="radio" name="seg-atrelado" value="nao" id="seg-atrelado-nao"> Não</label>
+                        </div>
+                        <!-- Exibido quando atrelado = sim -->
+                        <div id="seg-atrelado-sim-area" style="display:none">
+                            <label style="font-size:0.78rem;font-weight:600;display:block;margin-bottom:4px">Data da Consulta de Referência</label>
+                            <input type="date" id="seg-data-consulta-ref" class="select-field" style="max-width:200px">
+                        </div>
+                        <!-- Exibido quando atrelado = não -->
+                        <div id="seg-atrelado-nao-area" style="display:none">
+                            <label style="font-size:0.78rem;font-weight:600;display:block;margin-bottom:8px">Motivo do Seguimento</label>
+                            <div style="display:flex;gap:20px">
+                                <label class="rc-item"><input type="radio" name="seg-motivo" value="Monitoramento presencial"> Monitoramento presencial</label>
+                                <label class="rc-item"><input type="radio" name="seg-motivo" value="Telemonitoramento"> Telemonitoramento</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contexto da última Consulta de Enfermagem (visível quando atrelado=sim) -->
                 <div id="ultima-consulta-ctx" class="card mb-16" style="display:none">
                     <div class="card-header">
                         <span class="card-icon blue"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
@@ -882,25 +1327,61 @@
                             </div>
                         </div>
 
-                        <div class="section-label mt-16">Metas do Plano de Cuidado</div>
-                        <div class="followup-checklist" id="followup-actions-panel">
-                            <div class="empty-state-sm">Complete o Plano SAE para carregar as metas aqui.</div>
+                        <!-- Metas do Plano — apenas quando atrelado à consulta -->
+                        <div id="seg-metas-panel">
+                            <div class="section-label mt-16">Metas do Plano de Cuidado</div>
+                            <div class="followup-checklist" id="followup-actions-panel">
+                                <div class="empty-state-sm">Complete o Plano SAE para carregar as metas aqui.</div>
+                            </div>
                         </div>
                     </div>
 
                     <div class="card">
-                        <div class="card-header">
-                            <span class="card-icon amber"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
-                            <h2 class="card-title">Mini-Triagem de Sintomas</h2>
+                        <!-- Triagem para seguimento ATRELADO à consulta (mini, 6 sintomas) -->
+                        <div id="seg-mini-triagem">
+                            <div class="card-header">
+                                <span class="card-icon amber"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+                                <h2 class="card-title">Triagem de Sintomas — Evolução</h2>
+                            </div>
+                            <p class="card-desc">Avalie a evolução dos sintomas registrados na consulta anterior.</p>
+                            <div class="symptoms-list" id="seg-symptoms-list">
+                                <div class="symptom-row" data-sym="seg_nausea"><div class="sym-name">Náusea</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="seg_vomito"><div class="sym-name">Vômito</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="seg_dor"><div class="sym-name">Dor</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="seg_fadiga"><div class="sym-name">Fadiga</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="seg_febre"><div class="sym-name">Febre ⚠️</div><div class="sym-grades"><button class="sg active" data-g="0">Não</button><button class="sg risk" data-g="3">Sim</button></div></div>
+                                <div class="symptom-row" data-sym="seg_dispneia"><div class="sym-name">Dispneia ⚠️</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                            </div>
                         </div>
-                        <p class="card-desc">Avalie a evolução dos sintomas registrados na consulta anterior.</p>
-                        <div class="symptoms-list" id="seg-symptoms-list">
-                            <div class="symptom-row" data-sym="seg_nausea"><div class="sym-name">Náusea</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
-                            <div class="symptom-row" data-sym="seg_vomito"><div class="sym-name">Vômito</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
-                            <div class="symptom-row" data-sym="seg_dor"><div class="sym-name">Dor</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
-                            <div class="symptom-row" data-sym="seg_fadiga"><div class="sym-name">Fadiga</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
-                            <div class="symptom-row" data-sym="seg_febre"><div class="sym-name">Febre ⚠️</div><div class="sym-grades"><button class="sg active" data-g="0">Não</button><button class="sg risk" data-g="3">Sim</button></div></div>
-                            <div class="symptom-row" data-sym="seg_dispneia"><div class="sym-name">Dispneia ⚠️</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+
+                        <!-- Triagem CTCAE v5.0 completa — apenas quando NÃO atrelado à consulta -->
+                        <div id="seg-ctcae-completo" style="display:none">
+                            <div class="card-header">
+                                <span class="card-icon red"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+                                <h2 class="card-title">Triagem de Sintomas — CTCAE v5.0</h2>
+                                <span class="card-badge">Grau 3-4 = Alerta</span>
+                            </div>
+                            <div class="symptoms-list" id="seg-ctcae-list">
+                                <div class="symptom-row" data-sym="segc_nausea"><div class="sym-name">Náusea</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="segc_vomito"><div class="sym-name">Vômito</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="segc_diarreia"><div class="sym-name">Diarreia</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="segc_constipacao"><div class="sym-name">Constipação Intestinal</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="segc_dor"><div class="sym-name">Dor (qualquer localização)</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="segc_fadiga"><div class="sym-name">Fadiga / Cansaço</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="segc_febre"><div class="sym-name">Febre (≥ 38°C) ⚠️</div><div class="sym-grades"><button class="sg active" data-g="0">Não</button><button class="sg risk" data-g="3">Sim</button></div></div>
+                                <div class="symptom-row" data-sym="segc_calafrio"><div class="sym-name">Calafrio / Tremor</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="segc_dispneia"><div class="sym-name">Dispneia / Falta de ar ⚠️</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="segc_neuropatia"><div class="sym-name">Neuropatia periférica</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="segc_pele"><div class="sym-name">Alteração de pele</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="segc_insonia"><div class="sym-name">Alteração do sono / Insônia</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="segc_ansiedade"><div class="sym-name">Ansiedade</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="segc_tristeza"><div class="sym-name">Tristeza / Choro frequente</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="segc_edema"><div class="sym-name">Edema</div><div class="sym-grades"><button class="sg active" data-g="0">0</button><button class="sg" data-g="1">1</button><button class="sg" data-g="2">2</button><button class="sg risk" data-g="3">3</button><button class="sg risk" data-g="4">4</button></div></div>
+                                <div class="symptom-row" data-sym="segc_outros">
+                                    <div class="sym-name">Outros sintomas</div>
+                                    <input type="text" id="seg-outros-sintomas" placeholder="Descreva..." class="input-sm" style="width:200px">
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Nova conduta de seguimento -->

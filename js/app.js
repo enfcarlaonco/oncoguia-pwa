@@ -472,8 +472,89 @@ document.addEventListener('DOMContentLoaded', function() {
         state.plano = [];
         state.focusDx = null;
         state.focusNic = null;
+        state.ecog = null;
+        state.symptoms = {};
+        state.segSymptoms = {};
+        state.riskLevel = 'baixo';
+
+        // Limpar campos de Identificação
+        ['reg-inst','pac-iniciais','pac-nascimento','pac-idade','pac-tel','pac-tel2',
+         'pac-cuidador','pac-tel-cuidador','pac-dx','pac-protocol','pac-ciclo',
+         'pac-ultima-qt','pac-proxima-qt','pac-data-diagnostico',
+         'pac-local-radioterapia','pac-alergia-desc'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        var sexoEl = document.getElementById('pac-sexo');
+        if (sexoEl) sexoEl.value = '';
+        var tipoTratEl = document.getElementById('pac-tipo-tratamento');
+        if (tipoTratEl) tipoTratEl.value = '';
+        document.querySelectorAll('input[name="pac-radioterapia"], input[name="pac-alergia"]').forEach(function(r){ r.checked = false; });
+        var localRxtEl = document.getElementById('pac-local-radioterapia');
+        if (localRxtEl) localRxtEl.style.display = 'none';
+        var alDescEl = document.getElementById('pac-alergia-desc');
+        if (alDescEl) alDescEl.style.display = 'none';
+
+        // Limpar campos de Triagem
+        var tipoEl = document.getElementById('tipo-consulta');
+        if (tipoEl) { tipoEl.value = ''; }
+        document.getElementById('tipo-outro-group').style.display = 'none';
+        document.getElementById('form-inicio-tratamento').style.display = 'none';
+        // Limpar campos de texto da anamnese estendida
+        ['fit-escolaridade','fit-profissao','fit-naturalidade','fit-cidade-residencia','fit-religiao',
+         'fit-comorbidade-desc','fit-cirurgia-desc','fit-hist-familiar-desc',
+         'fit-dum','fit-morse','fit-dor-local','fit-dor-eva',
+         'fit-dx-histologico','fit-dx-data','fit-estadiamento-desc','fit-protocolo-proposto',
+         'fit-mucosa-oral','fit-ox-dispositivo','fit-ox-fr','fit-ox-spo2','fit-ox-o2',
+         'fit-cv-fc','fit-cv-pa','fit-abdome','fit-nut-dispositivo','fit-nut-hidratacao',
+         'fit-integridade-desc','fit-dados-relevantes','fit-filhos-qtd'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        // Recolher campos condicionais da anamnese
+        ['fit-filhos-qtd-group','fit-dor-detail','fit-esvaziamento-membro-group'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+        ['fit-comorbidade-desc','fit-cirurgia-desc','fit-hist-familiar-desc',
+         'fit-estadiamento-desc','fit-integridade-desc'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+        ['peso','altura','asc','ef-pa','ef-fc','ef-fr','ef-temp','ef-sato2',
+         'ef-obs','medicamentos','comorbidade-outros','suporte-outro',
+         'nutricao-outros','outros-sintomas',
+         'lab-data','lab-leuco','lab-neutro','lab-plaquetas','lab-hb','lab-creatinina'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        ['ef-hidratacao','ef-mucosa'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        // Desmarcar todos os radios e checkboxes da triagem
+        document.querySelectorAll('#module-triage input[type=radio], #module-triage input[type=checkbox]').forEach(function(el) {
+            el.checked = false;
+        });
+        // Resetar botões de grau dos sintomas para grau 0
+        document.querySelectorAll('.symptom-row').forEach(function(row) {
+            row.querySelectorAll('.sg').forEach(function(btn, idx) {
+                btn.classList.toggle('active', idx === 0);
+            });
+        });
+
+        // Limpar display do paciente
+        document.getElementById('display-patient-name').textContent = 'Novo Paciente';
+        document.getElementById('display-reg').textContent = '---';
+        document.getElementById('display-ciclo').textContent = '---';
+        document.getElementById('display-protocol').textContent = '---';
+        document.getElementById('patient-avatar').textContent = 'N/A';
+
+        // Resetar risco
         var rSel = document.getElementById('risco-validado');
         if (rSel) { rSel.value = 'baixo'; delete rSel.dataset.manualOverride; }
+        evaluateRisk();
+
         showApp();
         activateModule('module-id');
     });
@@ -518,11 +599,29 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('display-protocol').textContent = e.target.value || '---';
     });
 
+    // Mostrar/esconder campo local de radioterapia
+    document.querySelectorAll('input[name="pac-radioterapia"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            document.getElementById('pac-local-radioterapia').style.display =
+                this.value === 'sim' ? 'block' : 'none';
+        });
+    });
+
+    // Mostrar/esconder campo descrição de alergia
+    document.querySelectorAll('input[name="pac-alergia"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            document.getElementById('pac-alergia-desc').style.display =
+                this.value === 'sim' ? 'block' : 'none';
+        });
+    });
+
     document.getElementById('btn-salvar-id').addEventListener('click', async function() {
         const reg      = document.getElementById('reg-inst').value.trim();
         const iniciais = document.getElementById('pac-iniciais').value.trim();
         if (!reg || !iniciais) { alert('Preencha o Registro e as Iniciais do paciente.'); return; }
         try {
+            var alergiaRadio = document.querySelector('input[name="pac-alergia"]:checked');
+            var rxtRadio     = document.querySelector('input[name="pac-radioterapia"]:checked');
             const paciente = await api('POST', '/pacientes', {
                 registro_instituicao: reg, iniciais_nome: iniciais,
                 telefone_1: document.getElementById('pac-tel').value || null,
@@ -536,6 +635,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 diagnostico_oncologico: document.getElementById('pac-dx').value || null,
                 data_ultima_qt: document.getElementById('pac-ultima-qt').value || null,
                 data_proxima_qt_prevista: document.getElementById('pac-proxima-qt').value || null,
+                data_diagnostico: document.getElementById('pac-data-diagnostico').value || null,
+                tipo_tratamento: document.getElementById('pac-tipo-tratamento').value || null,
+                faz_radioterapia: rxtRadio ? rxtRadio.value : null,
+                local_radioterapia: document.getElementById('pac-local-radioterapia').value || null,
+                alergia: alergiaRadio ? alergiaRadio.value : null,
+                alergia_descricao: document.getElementById('pac-alergia-desc').value || null,
             });
             state.patient.id = paciente.id_paciente;
             if (!state.consultaId) {
@@ -558,8 +663,37 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     document.getElementById('tipo-consulta').addEventListener('change', function(e) {
-        document.getElementById('tipo-outro-group').style.display = e.target.value === 'Outro' ? 'block' : 'none';
+        const val = e.target.value;
+        document.getElementById('tipo-outro-group').style.display = val === 'Outro' ? 'block' : 'none';
+        const isAbertura = val === 'Consulta de início de tratamento' || val === 'Consulta de troca de protocolo';
+        document.getElementById('form-inicio-tratamento').style.display = isAbertura ? 'block' : 'none';
     });
+
+    // ── ANAMNESE ESTENDIDA — listeners de campos condicionais ──
+    (function() {
+        function toggleOnSim(radioName, targetId) {
+            document.querySelectorAll('input[name="' + radioName + '"]').forEach(function(r) {
+                r.addEventListener('change', function() {
+                    document.getElementById(targetId).style.display = r.value === 'sim' ? 'block' : 'none';
+                });
+            });
+        }
+        function toggleOnValue(radioName, targetId, triggerValue) {
+            document.querySelectorAll('input[name="' + radioName + '"]').forEach(function(r) {
+                r.addEventListener('change', function() {
+                    document.getElementById(targetId).style.display = r.value === triggerValue ? 'block' : 'none';
+                });
+            });
+        }
+        toggleOnSim('fit_filhos',              'fit-filhos-qtd-group');
+        toggleOnSim('fit_comorbidade_pre',      'fit-comorbidade-desc');
+        toggleOnSim('fit_cirurgia_prev',        'fit-cirurgia-desc');
+        toggleOnSim('fit_hist_familiar',        'fit-hist-familiar-desc');
+        toggleOnSim('fit_dor',                  'fit-dor-detail');
+        toggleOnSim('fit_esvaziamento_axilar',  'fit-esvaziamento-membro-group');
+        toggleOnValue('fit_estadiamento',       'fit-estadiamento-desc',    'sim');
+        toggleOnValue('fit_integridade_cutanea','fit-integridade-desc',     'lesao');
+    })();
 
     // ── TRIAGEM ──
     document.querySelectorAll('input[name="ecog"]').forEach(function(radio) {
@@ -1020,6 +1154,52 @@ document.addEventListener('DOMContentLoaded', function() {
         }).join('');
     }
 
+    // ── Lógica de vínculo do seguimento (atrelado / não atrelado) ──
+    function aplicarVinculoSeguimento(atrelado) {
+        var simArea    = document.getElementById('seg-atrelado-sim-area');
+        var naoArea    = document.getElementById('seg-atrelado-nao-area');
+        var ctxCard    = document.getElementById('ultima-consulta-ctx');
+        var metasPanel = document.getElementById('seg-metas-panel');
+        var miniTriag  = document.getElementById('seg-mini-triagem');
+        var ctcae      = document.getElementById('seg-ctcae-completo');
+        if (atrelado === 'sim') {
+            if (simArea)    simArea.style.display    = 'block';
+            if (naoArea)    naoArea.style.display    = 'none';
+            if (metasPanel) metasPanel.style.display = 'block';
+            if (miniTriag)  miniTriag.style.display  = 'block';
+            if (ctcae)      ctcae.style.display      = 'none';
+            // Exibir contexto da última consulta se existir
+            if (state.ultimaConsulta && ctxCard) ctxCard.style.display = 'block';
+        } else if (atrelado === 'nao') {
+            if (simArea)    simArea.style.display    = 'none';
+            if (naoArea)    naoArea.style.display    = 'block';
+            if (metasPanel) metasPanel.style.display = 'none';
+            if (miniTriag)  miniTriag.style.display  = 'none';
+            if (ctcae)      ctcae.style.display      = 'block';
+            if (ctxCard)    ctxCard.style.display    = 'none';
+        }
+    }
+
+    document.querySelectorAll('input[name="seg-atrelado"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            aplicarVinculoSeguimento(this.value);
+        });
+    });
+
+    // Inicializar botões de grau nos novos sintomas CTCAE do seguimento
+    (function() {
+        document.querySelectorAll('#seg-ctcae-list .symptom-row').forEach(function(row) {
+            row.querySelectorAll('.sg').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    row.querySelectorAll('.sg').forEach(function(b){ b.classList.remove('active'); });
+                    btn.classList.add('active');
+                    var sym = row.dataset.sym;
+                    if (sym) state.segSymptoms[sym] = { grade: parseInt(btn.dataset.g), isRisk: btn.classList.contains('risk') };
+                });
+            });
+        });
+    })();
+
     document.getElementById('btn-salvar-seguimento').addEventListener('click', async function() {
         if (!state.patient.id) { alert('Selecione um paciente antes de salvar o seguimento.'); return; }
         const modalidade  = document.getElementById('seg-modalidade').value;
@@ -1043,6 +1223,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const btn = document.getElementById('btn-salvar-seguimento');
         btn.disabled = true;
         btn.textContent = 'Salvando...';
+        const atreladoRadio = document.querySelector('input[name="seg-atrelado"]:checked');
+        const atrelado      = atreladoRadio ? atreladoRadio.value : null;
+        const motivoRadio   = document.querySelector('input[name="seg-motivo"]:checked');
+        const motivo        = motivoRadio ? motivoRadio.value : null;
+        const dataConsRef   = document.getElementById('seg-data-consulta-ref').value || null;
+
         try {
             await api('POST', '/seguimentos', {
                 id_paciente:              state.patient.id,
@@ -1057,6 +1243,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 efetividade:              null,
                 necessita_novo_seguimento: necessita,
                 sintomas:                 sintomas,
+                atrelado_consulta:        atrelado,
+                data_consulta_referencia: dataConsRef,
+                motivo_seguimento:        motivo,
             });
             btn.textContent = '✓ Seguimento salvo!';
             btn.style.background = 'var(--green)';
@@ -1441,7 +1630,10 @@ document.addEventListener('DOMContentLoaded', function() {
             var paciente  = (state.patient && state.patient.initials) ? state.patient.initials : '—';
             var registro  = (state.patient && state.patient.reg)      ? state.patient.reg      : '—';
             var enfermeiro = c.completed_by_user_name || c.updated_by_user_name || '—';
-            var tipo      = c.tipo_consulta ? (c.tipo_consulta.charAt(0).toUpperCase() + c.tipo_consulta.slice(1)) : '—';
+            var tipoDropdown = (document.getElementById('tipo-consulta')?.value || '').trim();
+            var tipoDb   = c.tipo_consulta || '';
+            var tipoRaw  = tipoDropdown || tipoDb;
+            var tipo     = tipoRaw ? (tipoRaw.charAt(0).toUpperCase() + tipoRaw.slice(1)) : '—';
             var status    = c.status_consulta || '—';
             var riscAuto  = c.classificacao_risco_automatica || '—';
             var riscVal   = c.classificacao_risco_validada   || '—';
@@ -1651,7 +1843,79 @@ saeText + '\n\n' +
                     if (followupData) { data_prevista_tarefa = followupData.split('T')[0]; }
                     else { const d = new Date(); d.setDate(d.getDate() + (conduta.includes('48h')?2:1)); data_prevista_tarefa = d.toISOString().split('T')[0]; }
                 }
+                const isAbertura = tipoConsulta === 'Consulta de início de tratamento' || tipoConsulta === 'Consulta de troca de protocolo';
+                const anamnese = isAbertura ? (function() {
+                    function rv(name) { var el = document.querySelector('input[name="'+name+'"]:checked'); return el ? el.value : null; }
+                    function txv(id) { var el = document.getElementById(id); return el ? (el.value||'').trim()||null : null; }
+                    function chk(name) { return Array.from(document.querySelectorAll('input[name="'+name+'"]:checked')).map(function(e){return e.value;}); }
+                    return {
+                        escolaridade:          txv('fit-escolaridade'),
+                        profissao:             txv('fit-profissao'),
+                        ocupacao:              rv('fit_ocupacao'),
+                        estado_civil:          rv('fit_estado_civil'),
+                        filhos:                rv('fit_filhos'),
+                        filhos_qtd:            txv('fit-filhos-qtd'),
+                        naturalidade:          txv('fit-naturalidade'),
+                        cidade_residencia:     txv('fit-cidade-residencia'),
+                        religiao:              txv('fit-religiao'),
+                        comorbidade_pre:       rv('fit_comorbidade_pre'),
+                        comorbidade_desc:      txv('fit-comorbidade-desc'),
+                        cirurgia_prev:         rv('fit_cirurgia_prev'),
+                        cirurgia_desc:         txv('fit-cirurgia-desc'),
+                        hist_familiar:         rv('fit_hist_familiar'),
+                        hist_familiar_desc:    txv('fit-hist-familiar-desc'),
+                        sono:                  rv('fit_sono'),
+                        atividade_fisica:      rv('fit_atividade_fisica'),
+                        etilismo:              rv('fit_etilismo'),
+                        tabagismo:             rv('fit_tabagismo'),
+                        vida_sexual:           rv('fit_vida_sexual'),
+                        dum:                   txv('fit-dum'),
+                        amenorreia:            rv('fit_amenorreia'),
+                        seg_emocional:         rv('fit_seg_emocional'),
+                        neurologico:           rv('fit_neurologico'),
+                        acuidade_visual:       rv('fit_acuidade_visual'),
+                        acuidade_auditiva:     rv('fit_acuidade_auditiva'),
+                        risco_queda:           rv('fit_risco_queda'),
+                        morse:                 txv('fit-morse'),
+                        dor:                   rv('fit_dor'),
+                        dor_local:             txv('fit-dor-local'),
+                        dor_eva:               txv('fit-dor-eva'),
+                        dx_histologico:        txv('fit-dx-histologico'),
+                        dx_data:               txv('fit-dx-data'),
+                        estadiamento:          rv('fit_estadiamento'),
+                        estadiamento_desc:     txv('fit-estadiamento-desc'),
+                        metastase:             rv('fit_metastase'),
+                        protocolo_proposto:    txv('fit-protocolo-proposto'),
+                        finalidade_qt:         rv('fit_finalidade_qt'),
+                        tto_anterior:          chk('fit_tto_anterior'),
+                        conhecimento_doenca:   rv('fit_conhecimento_doenca'),
+                        geral:                 chk('fit_geral'),
+                        edema:                 rv('fit_edema'),
+                        mucosa_oral:           (document.getElementById('fit-mucosa-oral')?.value||null),
+                        oxigenacao:            rv('fit_oxigenacao'),
+                        ox_dispositivo:        txv('fit-ox-dispositivo'),
+                        ox_fr:                 txv('fit-ox-fr'),
+                        ox_spo2:               txv('fit-ox-spo2'),
+                        ox_o2:                 txv('fit-ox-o2'),
+                        cardiovascular:        rv('fit_cardiovascular'),
+                        cv_fc:                 txv('fit-cv-fc'),
+                        cv_pa:                 txv('fit-cv-pa'),
+                        abdome:                (document.getElementById('fit-abdome')?.value||null),
+                        nutricao_ef:           rv('fit_nutricao_ef'),
+                        nut_dispositivo:       txv('fit-nut-dispositivo'),
+                        nut_hidratacao:        txv('fit-nut-hidratacao'),
+                        elin_urinaria:         rv('fit_elin_urinaria'),
+                        elin_intestinal:       rv('fit_elin_intestinal'),
+                        integridade_cutanea:   rv('fit_integridade_cutanea'),
+                        integridade_desc:      txv('fit-integridade-desc'),
+                        esvaziamento_axilar:   rv('fit_esvaziamento_axilar'),
+                        esvaziamento_membro:   rv('fit_esvaziamento_membro'),
+                        dados_relevantes:      txv('fit-dados-relevantes'),
+                    };
+                })() : null;
+
                 await api('POST', '/consultas/'+state.consultaId+'/concluir', {
+                    tipo_consulta:                 tipoConsulta || null,
                     classificacao_risco_validada:  riscoValidado,
                     texto_copiavel_prontuario:     plainText,
                     plano_cuidado_resumido:        saePlan.length ? saePlan[0].titulo : '',
@@ -1661,6 +1925,7 @@ saeText + '\n\n' +
                     prioridade_tarefa:             prioridade_tarefa,
                     responsavel:                   enfermeiro,
                     completed_by_user_name:        enfermeiro,
+                    anamnese:                      anamnese,
                 });
             } catch(e) {}
         }
@@ -1681,6 +1946,11 @@ saeText + '\n\n' +
     });
 
     evaluateRisk();
-    window.loadNanda      = loadNanda;
-    window.activateModule = activateModule;
+    window.loadNanda          = loadNanda;
+    window.activateModule     = activateModule;
+    window.loadPatientsList   = loadPatientsList;
+    window.loadTarefas        = loadTarefas;
+    window.loadPendencias     = loadPendencias;
+    window.loadIndicators     = loadIndicators;
+    window.loadEvolution      = loadEvolution;
 });
